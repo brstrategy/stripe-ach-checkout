@@ -1,0 +1,72 @@
+// worker.js
+
+// Import the Stripe library (this works automatically in Cloudflare Workers)
+import Stripe from 'stripe';
+
+export default {
+  async fetch(request, env) {
+    if (request.method !== 'POST' || new URL(request.url).pathname !== '/create-checkout-session') {
+      // Only respond to POST requests at the specific path
+      return new Response('Not Found', { status: 404 });
+    }
+
+    try {
+      // Initialize Stripe with the Secret Key from environment variables (secure!)
+      // The 'env' object is where Wrangler securely stores your keys.
+      const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
+        apiVersion: '2020-08-27', 
+      });
+
+      const { amount } = await request.json(); // Get the amount from the frontend
+
+      if (!amount || amount <= 0) {
+          return new Response(JSON.stringify({ error: 'Invalid amount provided.' }), { 
+              status: 400, 
+              headers: { 'Content-Type': 'application/json' } 
+          });
+      }
+
+      // --- CRITICAL CODE: CREATE THE STRIPE CHECKOUT SESSION ---
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['us_bank_account'], // *** ACH-ONLY PAYMENT METHOD ***
+        mode: 'payment',
+
+        // This item is dynamically created using the amount from the client
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            unit_amount: amount, // Amount in cents
+            product_data: {
+              name: 'Client Payment',
+              description: 'Payment for professional services.',
+            },
+          },
+          quantity: 1,
+        }],
+
+        // This parameter saves the ACH details to the Customer object for re-use!
+        payment_intent_data: {
+            setup_future_usage: 'off_session', 
+        },
+
+        // URLs to redirect the client to after payment success/cancellation
+        success_url: `${request.url.origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${request.url.origin}/cancel.html`,
+
+        // Automatically collect customer email for the Customer object
+        customer_creation: 'always', 
+      });
+
+      return new Response(JSON.stringify({ id: session.id }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    } catch (error) {
+      console.error('Stripe API Error:', error);
+      return new Response(JSON.stringify({ error: error.message }), { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+  },
+};

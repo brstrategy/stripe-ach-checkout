@@ -1,0 +1,7 @@
+<html>
+<head><title>Payment Cancelled</title></head>
+<body>
+    <h1>Payment Cancelled</h1>
+    <p>You cancelled the payment process. You can try again at any time.</p>
+</body>
+</html>

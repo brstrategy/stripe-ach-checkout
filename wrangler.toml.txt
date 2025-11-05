@@ -1,0 +1,12 @@
+name = "custom-stripe-checkout-worker"
+main = "worker.js"
+compatibility_date = "2024-05-23"
+
+# This defines the URL path where the Worker will run.
+# It MUST match the fetch URL in your index.html file!
+route = "/create-checkout-session" 
+
+# The [vars] section is where we tell the Worker to look for the Secret Key.
+[vars]
+# The value will be set securely in the Cloudflare Dashboard, NOT here.
+# We leave it blank here, but the code references 'env.STRIPE_SECRET_KEY'

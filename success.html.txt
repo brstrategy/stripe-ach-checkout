@@ -1,0 +1,7 @@
+<html>
+<head><title>Payment Success!</title></head>
+<body>
+    <h1>Thank You!</h1>
+    <p>Your payment was successful. We will be in touch shortly.</p>
+</body>
+</html>
