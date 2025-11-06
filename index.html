@@ -160,8 +160,7 @@
       const amountNumber = parseFloat(amountParam);
       if (!isNaN(amountNumber) && amountNumber >= 0) {
         amountInput.value = amountNumber.toFixed(2);
-        // To auto-start checkout, uncomment the next line:
-        // checkoutButton.click();
+        checkoutButton.click();
       }
     }
   </script>
