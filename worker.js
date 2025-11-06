@@ -27,7 +27,7 @@ export default {
     };
 
     try {
-      const { amount } = await request.json();
+      const { amount, email } = await request.json();
 
       if (!amount || amount <= 0) {
         return new Response(JSON.stringify({ error: 'Invalid amount provided.' }), {
@@ -41,10 +41,11 @@ export default {
 
       // Payment method types
       params.append('payment_method_types[]', 'us_bank_account');
+      
       // Mode
       params.append('mode', 'payment');
 
-      // Line item with nested properties
+      // Line item
       params.append('line_items[0][price_data][currency]', 'usd');
       params.append('line_items[0][price_data][unit_amount]', amount);
       params.append('line_items[0][price_data][product_data][name]', 'Client Payment');
@@ -57,8 +58,11 @@ export default {
       // URLs
       params.append('success_url', `${new URL(request.url).origin}/success.html?session_id={CHECKOUT_SESSION_ID}`);
       params.append('cancel_url', `${new URL(request.url).origin}/cancel.html`);
-      // Customer creation
-      params.append('customer_creation', 'always');
+      
+      // Include customer_email if email provided
+      if (email) {
+        params.append('customer_email', email);
+      }
 
       // Call Stripe API
       const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {

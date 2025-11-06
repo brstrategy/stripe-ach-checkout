@@ -6,6 +6,7 @@
   <title>Dorothy Cole - Payment</title>
   <script src="https://js.stripe.com/v3/"></script>
   <style>
+    /* Your existing styles */
     body { 
       background: #FFFFFF; 
       color: #333; 
@@ -18,40 +19,11 @@
       margin: 0; 
       padding: 40px 20px;
     }
-
-    header {
-      width: 100%;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    .logo-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-    }
-
-    .logo-img {
-      max-width: 300px; /* Adjust as needed */
-      width: 100%; 
-      height: auto;
-      display: block;
-      margin-bottom: 15px;
-    }
-
-    h1 {
-      font-size: 2.5em;
-      margin: 0;
-      color: #0A4879;
-    }
-
-    .main-title {
-      font-size: 1.5em;
-      margin-top: 5px;
-      color: #0A4879;
-    }
-
+    header { width: 100%; text-align: center; margin-bottom: 30px; }
+    .logo-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+    .logo-img { max-width: 300px; width: 100%; height: auto; display: block; margin-bottom: 15px; }
+    h1 { font-size: 2.5em; margin: 0; color: #0A4879; }
+    .main-title { font-size: 1.5em; margin-top: 5px; color: #0A4879; }
     .container {
       background: #fff;
       padding: 40px;
@@ -59,16 +31,10 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       max-width: 400px;
       width: 100%;
-      margin: 0 auto; /* center horizontally */
-      box-sizing: border-box; /* include padding in width calculations, just to be safe */
+      margin: 0 auto;
+      box-sizing: border-box;
     }
-
-    label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-
+    label { display: block; font-weight: 600; margin-bottom: 10px; }
     #amount-input {
       width: 100%;
       padding: 12px;
@@ -78,7 +44,6 @@
       margin-bottom: 20px;
       box-sizing: border-box;
     }
-
     #checkout-button {
       width: 100%;
       padding: 14px;
@@ -90,16 +55,8 @@
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
-
-    #checkout-button:hover {
-      background-color: #0A4879;
-    }
-
-    footer {
-      margin-top: 40px;
-      font-size: 0.9em;
-      color: #777;
-    }
+    #checkout-button:hover { background-color: #0A4879; }
+    footer { margin-top: 40px; font-size: 0.9em; color: #777; }
   </style>
 </head>
 <body>
@@ -120,63 +77,66 @@
   </div>
 
   <script type="text/javascript">
-    // *** 1. REPLACE WITH YOUR PUBLISHABLE KEY ***
+    // Replace with your actual deployed worker URL
     const stripe = Stripe('pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts'); 
-    // ********************************************
 
     const checkoutButton = document.getElementById('checkout-button');
     const amountInput = document.getElementById('amount-input');
 
-    // Function to initiate checkout
+    // Function to extract URL parameters
+    function getUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        amount: params.get('amount'),
+        email: params.get('email')
+      };
+    }
+
     async function startCheckout() {
-      const amount = parseFloat(amountInput.value) * 100; // Convert to cents
-      if (isNaN(amount) || amount <= 0) {
+      const { amount, email } = getUrlParams();
+
+      const amountVal = parseFloat(amount || amountInput.value);
+      const amountCents = Math.round(amountVal * 100);
+      if (isNaN(amountCents) || amountCents <= 0) {
         alert('Please enter a valid amount.');
         return;
       }
 
       try {
+        // Replace with your actual worker URL
         const response = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/create-checkout-session', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ amount: Math.round(amount) }), 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: amountCents,
+            email: email || '' // pass email if available
+          }),
         });
         if (!response.ok) throw new Error('Failed to create Checkout Session.');
         const session = await response.json();
+
         const result = await stripe.redirectToCheckout({ sessionId: session.id });
         if (result.error) alert(result.error.message);
       } catch (error) {
         console.error('Error:', error);
-        alert('There was an error starting checkout. Please try again.');
+        alert('Error starting checkout. Please try again.');
       }
     }
 
-    // Run this when the DOM is loaded
+    // Auto-start if amount & email are in URL
     document.addEventListener('DOMContentLoaded', () => {
-      // Hide main content until we check URL
-      document.getElementById('mainContent').style.display = 'none';
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const amountParam = urlParams.get('amount');
-
-      if (amountParam) {
-        const amountNumber = parseFloat(amountParam);
+      const { amount, email } = getUrlParams();
+      if (amount && email) {
+        const amountNumber = parseFloat(amount);
         if (!isNaN(amountNumber) && amountNumber >= 0) {
-          // Set amount input
           amountInput.value = amountNumber.toFixed(2);
-          // Immediately start checkout
-          startCheckout();
-          return; // Stop further execution
         }
+        startCheckout();
+        return;
       }
-
-      // Show content if no auto checkout
       document.getElementById('mainContent').style.display = '';
     });
 
-    // Event listener for button (if manual)
     document.getElementById('checkout-button').addEventListener('click', (e) => {
       e.preventDefault();
       startCheckout();

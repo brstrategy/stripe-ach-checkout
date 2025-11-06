@@ -50,7 +50,7 @@ var worker_default = {
       "Access-Control-Allow-Origin": "*"
     };
     try {
-      const { amount } = await request.json();
+      const { amount, email } = await request.json();
       if (!amount || amount <= 0) {
         return new Response(JSON.stringify({ error: "Invalid amount provided." }), {
           status: 400,
@@ -68,7 +68,9 @@ var worker_default = {
       params.append("payment_intent_data[setup_future_usage]", "off_session");
       params.append("success_url", `${new URL(request.url).origin}/success.html?session_id={CHECKOUT_SESSION_ID}`);
       params.append("cancel_url", `${new URL(request.url).origin}/cancel.html`);
-      params.append("customer_creation", "always");
+      if (email) {
+        params.append("customer_email", email);
+      }
       const stripeResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",
         headers: {
