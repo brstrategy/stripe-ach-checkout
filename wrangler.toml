@@ -1,0 +1,16 @@
+name = "custom-stripe-checkout-worker"
+main = "worker.js"
+compatibility_date = "2024-05-23"
+
+[vars]
+# The value will be set securely in the Cloudflare Dashboard, NOT here.
+# We leave it blank here, but the code references 'env.STRIPE_SECRET_KEY'
+
+[observability]
+  [observability.logs]
+  enabled = false
+  head_sampling_rate = 1
+  invocation_logs = true
+  persist = true
+  
+# Removed the [build] command as it failed to fix the dependency hang.

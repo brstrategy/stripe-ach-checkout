@@ -21,7 +21,7 @@
 
   <script type="text/javascript">
     // *** 1. REPLACE WITH YOUR PUBLISHABLE KEY ***
-    const stripe = Stripe('pk_live_51RqI73AudhHgic2dfiEoTvHryUC1O6Db4w2Z08A9GaejWi2VuqyAVlp0GLV5ZbJHHekU1dC49n3TpnViKOwbieK200O40lRHVv'); 
+    const stripe = Stripe('pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts'); 
     // ********************************************
 
     const checkoutButton = document.getElementById('checkout-button');
@@ -37,7 +37,7 @@
       try {
         // *** 2. YOUR WORKER/SERVERLESS ENDPOINT HERE ***
         // This URL must match the route defined in your Worker config file!
-        const response = await fetch('/create-checkout-session', {
+        const response = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/create-checkout-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
