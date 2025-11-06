@@ -151,6 +151,19 @@
         alert('There was an error starting checkout. Please try again.');
       }
     });
+
+    // --- Begin added code for URL parameter ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const amountParam = urlParams.get('amount');
+
+    if (amountParam) {
+      const amountNumber = parseFloat(amountParam);
+      if (!isNaN(amountNumber) && amountNumber >= 0) {
+        amountInput.value = amountNumber.toFixed(2);
+        // To auto-start checkout, uncomment the next line:
+        // checkoutButton.click();
+      }
+    }
   </script>
 </body>
 </html>
