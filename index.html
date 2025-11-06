@@ -57,6 +57,10 @@
       margin-bottom: 10px;
     }
     button:hover { background-color: #0A4879; }
+    #existingMethodsContainer {
+      margin-top: 15px;
+      margin-bottom: 15px;
+    }
     footer { margin-top: 40px; font-size: 0.9em; color: #777; }
   </style>
 </head>
@@ -77,6 +81,13 @@
       <input type="email" id="email-input" placeholder="your.email@example.com" />
 
       <button id="startFlowBtn">Create Customer & Verify Bank</button>
+
+      <div id="existingMethodsContainer" style="display:none;">
+        <p>Select an existing bank account:</p>
+        <div id="methodsList"></div>
+        <button id="useSelectedMethodBtn">Use Selected Method</button>
+      </div>
+
       <button id="saveBankBtn" style="display:none;">Save Bank Info</button>
       <button id="payBtn" style="display:none;">Pay</button>
     </div>
@@ -99,16 +110,19 @@
 
     // Function to start the flow
     async function startFlow() {
-      const emailInput = document.getElementById('email-input');
+      // Reset previous selections
+      document.getElementById('methodsList').innerHTML = '';
+      document.getElementById('existingMethodsContainer').style.display = 'none';
+
+      const email = document.getElementById('email-input').value.trim();
       const amountVal = parseFloat(document.getElementById('amount-input').value);
-      const email = emailInput.value.trim();
 
       if (!email) {
         alert('Please enter your email.');
         return;
       }
 
-      // Step 1: Create Customer
+      // Step 1: Create or fetch customer
       const resCreate = await fetch('/create-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,55 +130,89 @@
       });
       const dataCreate = await resCreate.json();
       customerId = dataCreate.customerId;
-      alert('Customer created: ' + customerId);
+      const existingMethods = dataCreate.paymentMethods || [];
 
-      // Step 2: Create Setup Intent
-      const resSetup = await fetch('/create-setup-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId }),
-      });
-      const dataSetup = await resSetup.json();
-      setupIntentClientSecret = dataSetup.clientSecret;
+      if (existingMethods.length > 0) {
+        // Show existing methods
+        document.getElementById('existingMethodsContainer').style.display = 'block';
+        // Render methods as radio buttons
+        const listDiv = document.getElementById('methodsList');
+        listDiv.innerHTML = '';
+        existingMethods.forEach((pm, index) => {
+          const label = document.createElement('label');
+          label.style.display = 'block';
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'paymentMethod';
+          radio.value = pm.id;
+          if (index === 0) radio.checked = true;
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(` Bank ending in ${pm.us_bank_account.last4}`));
+          listDiv.appendChild(label);
+        });
+        // Save the selected method ID for later
+        document.getElementById('useSelectedMethodBtn').onclick = () => {
+          const selected = document.querySelector('input[name="paymentMethod"]:checked');
+          if (selected) {
+            paymentMethodId = selected.value;
+            alert('Using selected bank account.');
+            document.getElementById('saveBankBtn').style.display = 'none';
+            document.getElementById('payBtn').style.display = 'inline-block';
+          } else {
+            alert('Please select a bank account.');
+          }
+        };
+      } else {
+        // No existing methods, proceed with bank verification
+        document.getElementById('existingMethodsContainer').style.display = 'none';
 
-      // Step 3: Verify Bank Account using Stripe.js
-      const elements = stripe.elements();
-      const bank = elements.create('usBankAccount');
-      bank.mount('#bank-element');
+        // Step 2: Create Setup Intent
+        const resSetup = await fetch('/create-setup-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customerId }),
+        });
+        const dataSetup = await resSetup.json();
+        setupIntentClientSecret = dataSetup.clientSecret;
 
-      const { setupIntent, error } = await stripe.confirmUsBankAccountPayment(
-        setupIntentClientSecret,
-        {
-          payment_method: {
-            us_bank_account: bank,
-          },
+        // Step 3: Verify Bank Account using Stripe.js
+        const elements = stripe.elements();
+        const bank = elements.create('usBankAccount');
+        bank.mount('#bank-element');
+
+        const { setupIntent, error } = await stripe.confirmUsBankAccountPayment(
+          setupIntentClientSecret,
+          {
+            payment_method: {
+              us_bank_account: bank,
+            },
+          }
+        );
+
+        if (error) {
+          alert(error.message);
+          return;
         }
-      );
-
-      if (error) {
-        alert(error.message);
-        return;
-      }
-      if (setupIntent.status === 'succeeded') {
-        // Save PaymentMethod ID
-        paymentMethodId = setupIntent.payment_method;
-        alert('Bank verified! Click "Save Bank Info" to store it.');
-        document.getElementById('saveBankBtn').style.display = 'inline-block';
+        if (setupIntent.status === 'succeeded') {
+          // Save PaymentMethod ID
+          paymentMethodId = setupIntent.payment_method;
+          alert('Bank verified! Click "Save Bank Info" to store it.');
+          document.getElementById('saveBankBtn').style.display = 'inline-block';
+        }
       }
     }
 
-    // Save the verified bank info
+    // Save the bank info (for new bank accounts)
     document.getElementById('saveBankBtn').onclick = async () => {
       if (!paymentMethodId || !customerId) {
         alert('Verify bank first!');
         return;
       }
-      // Here you'd typically save paymentMethodId linked to customerId in your DB
       alert('Bank info saved!');
       document.getElementById('payBtn').style.display = 'inline-block';
     };
 
-    // Make the payment
+    // Proceed to payment
     document.getElementById('payBtn').onclick = async () => {
       const amountCents = Math.round(parseFloat(document.getElementById('amount-input').value) * 100);
       const email = document.getElementById('email-input').value.trim();
@@ -185,7 +233,7 @@
       }
     };
 
-    // Auto-start if URL params are present
+    // Auto-start with URL params
     window.addEventListener('load', () => {
       const params = getUrlParams();
       if (params.amount) {
@@ -193,12 +241,10 @@
       }
       if (params.email) {
         document.getElementById('email-input').value = params.email;
-        // Auto-start process
         startFlow();
       }
     });
 
-    // Button to manually start the flow
     document.getElementById('startFlowBtn').onclick = startFlow;
   </script>
 </body>
