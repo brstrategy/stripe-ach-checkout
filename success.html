@@ -1,7 +1,68 @@
-<html>
-<head><title>Payment Success!</title></head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payment Successful</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    header {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .logo-img {
+      max-width: 300px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-bottom: 15px;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    p {
+      font-size: 1.2em;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #016FD0;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+    a:hover {
+      background: #0A4879;
+    }
+  </style>
+</head>
 <body>
-    <h1>Thank You!</h1>
-    <p>Your payment was successful. We will be in touch shortly.</p>
+  <header>
+    <div class="logo-container">
+      <img src="images/logo.jpg" alt="Dorothy Cole Logo" class="logo-img" />
+      <div class="main-title">Secure Payment</div>
+    </div>
+  </header>
+  <h1>Payment Successful!</h1>
+  <p>Thank you for your payment.</p>
+  <a href="index.html">Make Another Payment</a>
 </body>
 </html>

@@ -57,11 +57,6 @@
       margin-bottom: 10px;
     }
     button:hover { background-color: #0A4879; }
-    #existingMethodsContainer {
-      margin-top: 15px;
-      margin-bottom: 15px;
-    }
-    footer { margin-top: 40px; font-size: 0.9em; color: #777; }
   </style>
 </head>
 <body>
@@ -75,177 +70,42 @@
   <div id="mainContent">
     <div class="container">
       <label for="amount-input">Amount (USD): $</label>
-      <input type="number" id="amount-input" value="100.00" min="1.00" step="0.01" required />
+      <input type="number" id="amount-input" value="100.00" min="1.00" step="0.01" />
 
       <label for="email-input">Email:</label>
       <input type="email" id="email-input" placeholder="your.email@example.com" />
 
-      <button id="startFlowBtn">Create Customer & Verify Bank</button>
-
-      <div id="existingMethodsContainer" style="display:none;">
-        <p>Select an existing bank account:</p>
-        <div id="methodsList"></div>
-        <button id="useSelectedMethodBtn">Use Selected Method</button>
-      </div>
-
-      <button id="saveBankBtn" style="display:none;">Save Bank Info</button>
-      <button id="payBtn" style="display:none;">Pay</button>
+      <button id="payBtn">Pay with Stripe</button>
     </div>
   </div>
 
-  <script type="text/javascript">
+  <script>
     const stripe = Stripe('pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts');
-    let customerId = null;
-    let paymentMethodId = null;
-    let setupIntentClientSecret = null;
 
-    // Utility: get URL params
-    function getUrlParams() {
-      const params = new URLSearchParams(window.location.search);
-      return {
-        amount: params.get('amount'),
-        email: params.get('email')
-      };
-    }
-
-    // Function to start the flow
-    async function startFlow() {
-      // Reset previous selections
-      document.getElementById('methodsList').innerHTML = '';
-      document.getElementById('existingMethodsContainer').style.display = 'none';
-
-      const email = document.getElementById('email-input').value.trim();
-      const amountVal = parseFloat(document.getElementById('amount-input').value);
-
-      if (!email) {
-        alert('Please enter your email.');
-        return;
-      }
-
-      // Step 1: Create or fetch customer
-      const resCreate = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/create-customer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const dataCreate = await resCreate.json();
-      customerId = dataCreate.customerId;
-      const existingMethods = dataCreate.paymentMethods || [];
-
-      if (existingMethods.length > 0) {
-        // Show existing methods
-        document.getElementById('existingMethodsContainer').style.display = 'block';
-        // Render methods as radio buttons
-        const listDiv = document.getElementById('methodsList');
-        listDiv.innerHTML = '';
-        existingMethods.forEach((pm, index) => {
-          const label = document.createElement('label');
-          label.style.display = 'block';
-          const radio = document.createElement('input');
-          radio.type = 'radio';
-          radio.name = 'paymentMethod';
-          radio.value = pm.id;
-          if (index === 0) radio.checked = true;
-          label.appendChild(radio);
-          label.appendChild(document.createTextNode(` Bank ending in ${pm.us_bank_account.last4}`));
-          listDiv.appendChild(label);
-        });
-        // Save the selected method ID for later
-        document.getElementById('useSelectedMethodBtn').onclick = () => {
-          const selected = document.querySelector('input[name="paymentMethod"]:checked');
-          if (selected) {
-            paymentMethodId = selected.value;
-            alert('Using selected bank account.');
-            document.getElementById('saveBankBtn').style.display = 'none';
-            document.getElementById('payBtn').style.display = 'inline-block';
-          } else {
-            alert('Please select a bank account.');
-          }
-        };
-      } else {
-        // No existing methods, proceed with bank verification
-        document.getElementById('existingMethodsContainer').style.display = 'none';
-
-        // Step 2: Create Setup Intent
-        const resSetup = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/create-setup-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customerId }),
-        });
-        const dataSetup = await resSetup.json();
-        setupIntentClientSecret = dataSetup.clientSecret;
-
-        // Step 3: Verify Bank Account using Stripe.js
-        const elements = stripe.elements();
-        const bank = elements.create('usBankAccount');
-        bank.mount('#bank-element');
-
-        const { setupIntent, error } = await stripe.confirmUsBankAccountPayment(
-          setupIntentClientSecret,
-          {
-            payment_method: {
-              us_bank_account: bank,
-            },
-          }
-        );
-
-        if (error) {
-          alert(error.message);
-          return;
-        }
-        if (setupIntent.status === 'succeeded') {
-          // Save PaymentMethod ID
-          paymentMethodId = setupIntent.payment_method;
-          alert('Bank verified! Click "Save Bank Info" to store it.');
-          document.getElementById('saveBankBtn').style.display = 'inline-block';
-        }
-      }
-    }
-
-    // Save the bank info (for new bank accounts)
-    document.getElementById('saveBankBtn').onclick = async () => {
-      if (!paymentMethodId || !customerId) {
-        alert('Verify bank first!');
-        return;
-      }
-      alert('Bank info saved!');
-      document.getElementById('payBtn').style.display = 'inline-block';
-    };
-
-    // Proceed to payment
     document.getElementById('payBtn').onclick = async () => {
-      const amountCents = Math.round(parseFloat(document.getElementById('amount-input').value) * 100);
+      const amount = parseFloat(document.getElementById('amount-input').value);
       const email = document.getElementById('email-input').value.trim();
-      if (!customerId || !paymentMethodId) {
-        alert('Verify bank and save first!');
+
+      if (!amount || amount <=0 || !email) {
+        alert('Please enter valid amount and email.');
         return;
       }
-      const resPay = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/charge', {
+
+      // Call your backend to create a checkout session
+      const res = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, paymentMethodId, amount: amountCents }),
+        body: JSON.stringify({ amount: Math.round(amount * 100), email }),
       });
-      const dataPay = await resPay.json();
-      if (dataPay.error) {
-        alert('Payment failed: ' + dataPay.error);
+      const data = await res.json();
+
+      if (data.id) {
+        // Redirect to Stripe checkout
+        stripe.redirectToCheckout({ sessionId: data.id });
       } else {
-        alert('Payment successful! PaymentIntent ID: ' + dataPay.paymentIntentId);
+        alert('Error creating checkout session');
       }
     };
-
-    // Auto-start with URL params
-    window.addEventListener('load', () => {
-      const params = getUrlParams();
-      if (params.amount) {
-        document.getElementById('amount-input').value = parseFloat(params.amount).toFixed(2);
-      }
-      if (params.email) {
-        document.getElementById('email-input').value = params.email;
-        startFlow();
-      }
-    });
-
-    document.getElementById('startFlowBtn').onclick = startFlow;
   </script>
 </body>
 </html>
