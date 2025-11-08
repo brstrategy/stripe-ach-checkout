@@ -91,19 +91,37 @@
         return;
       }
 
-      // Call your backend to create a checkout session
-      const res = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Math.round(amount * 100), email }),
-      });
-      const data = await res.json();
+      try {
+        // Call your backend to create a checkout session
+        const res = await fetch('https://custom-stripe-checkout-worker.brigham.workers.dev/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: Math.round(amount * 100), email }),
+        });
 
-      if (data.id) {
-        // Redirect to Stripe checkout
-        stripe.redirectToCheckout({ sessionId: data.id });
-      } else {
-        alert('Error creating checkout session');
+        if (!res.ok) {
+          // If server responded with error status
+          const errorData = await res.json();
+          alert(`Server error: ${errorData.error || res.status}`);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (data.id) {
+          // Redirect to Stripe checkout
+          const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
+          if (error) {
+            // Handle errors from Stripe redirect
+            alert(`Stripe error: ${error.message}`);
+          }
+        } else {
+          // No session ID returned
+          alert('Failed to create checkout session. Please try again.');
+        }
+      } catch (err) {
+        // Catch network or unexpected errors
+        alert(`Error: ${err.message}`);
       }
     };
   </script>

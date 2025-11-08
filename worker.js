@@ -23,7 +23,7 @@ export default {
       if (pathname === '/create-checkout-session') {
         const { amount, email } = await request.json();
 
-        const session = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+        const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
@@ -31,7 +31,7 @@ export default {
           },
           body: new URLSearchParams({
             payment_method_types: 'us_bank_account,card',
-            mode: 'setup', // Use 'setup' mode to link bank account
+            mode: 'setup', // Link bank account without charge
             line_items: JSON.stringify([{
               price_data: {
                 currency: 'usd',
@@ -45,15 +45,24 @@ export default {
             customer_email: email,
             success_url: `${new URL(request.url).origin}/success.html`,
             cancel_url: `${new URL(request.url).origin}/cancel.html`,
-            // For ACH, we use mode: 'setup' to just link the bank account
           }),
         });
-        const sessionData = await session.json();
-        return new Response(JSON.stringify({ id: sessionData.id }), { headers });
+
+        const sessionData = await response.json();
+
+        // Debugging: log the Stripe response
+        console.log('Stripe session data:', sessionData);
+
+        if (sessionData.id) {
+          return new Response(JSON.stringify({ id: sessionData.id }), { headers });
+        } else {
+          console.error('Stripe API error:', sessionData);
+          return new Response(JSON.stringify({ error: 'Failed to create session' }), { status: 500, headers });
+        }
       }
-      // You can add more endpoints here if needed
       return new Response('Not Found', { status: 404 });
     } catch (e) {
+      console.error('Error in fetch handler:', e);
       return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
     }
   }
