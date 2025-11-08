@@ -38,7 +38,7 @@ export default {
             }]),
             customer_email: email,
             success_url: `${new URL(request.url).origin}/success.html`,
-            cancel_url: `${new URL(request.url).origin}/cancel.html`,
+            cancel_url: `${new URL(request.url).origin}/cancel.html`,git git push origin main
           }),
         });
 
