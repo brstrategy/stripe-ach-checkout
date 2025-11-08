@@ -23,19 +23,19 @@ export default {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
           },
-          body: new URLSearchParams({
-            payment_method_types: 'us_bank_account,card',
-            mode: 'setup', // Link bank account without charge
-            line_items: JSON.stringify([{
+          body: JSON.stringify({
+            payment_method_types: ['us_bank_account', 'card'],
+            mode: 'setup',
+            line_items: [{
               price_data: {
                 currency: 'usd',
                 product_data: { name: 'Client Payment' },
                 unit_amount: amount,
               },
               quantity: 1,
-            }]),
+            }],
             customer_email: email,
             success_url: `${new URL(request.url).origin}/success.html`,
             cancel_url: `${new URL(request.url).origin}/cancel.html`,
