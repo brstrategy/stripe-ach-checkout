@@ -19,27 +19,29 @@ export default {
       if (pathname === '/create-checkout-session') {
         const { amount, email } = await request.json();
 
+        const params = new URLSearchParams({
+          payment_method_types: 'us_bank_account,card',
+          mode: 'setup',
+          line_items: JSON.stringify([{
+            price_data: {
+              currency: 'usd',
+              product_data: { name: 'Client Payment' },
+              unit_amount: amount,
+            },
+            quantity: 1,
+          }]),
+          customer_email: email,
+          success_url: `${new URL(request.url).origin}/success.html`,
+          cancel_url: `${new URL(request.url).origin}/cancel.html`,
+        }).toString();
+
         const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: JSON.stringify({
-            payment_method_types: ['us_bank_account', 'card'],
-            mode: 'setup',
-            line_items: [{
-              price_data: {
-                currency: 'usd',
-                product_data: { name: 'Client Payment' },
-                unit_amount: amount,
-              },
-              quantity: 1,
-            }],
-            customer_email: email,
-            success_url: `${new URL(request.url).origin}/success.html`,
-            cancel_url: `${new URL(request.url).origin}/cancel.html`,
-          }),
+          body: params,
         });
 
         const sessionData = await response.json();
