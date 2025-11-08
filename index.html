@@ -38,7 +38,7 @@
       display: block; 
       font-weight: 600; 
       margin-bottom: 10px; 
-      font-size: 1.2em;
+      font-size: 1.2em; /* Make labels match input size */
     }
     #amount-input, #email-input {
       width: 100%;
@@ -89,7 +89,7 @@
     const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
     const stripe = Stripe(STRIPE_PUBLIC_KEY);
 
-    // --- NEW: URL Parameter Pre-filling ---
+    // --- URL Parameter Pre-filling ---
     const urlParams = new URLSearchParams(window.location.search);
     const amountInput = document.getElementById('amount-input');
     const emailInput = document.getElementById('email-input');
@@ -98,10 +98,8 @@
     const urlEmail = urlParams.get('email');
 
     if (urlAmount) {
-      // Divide by 100 since the invoice link likely uses cents, but keep as is if the link uses dollars
-      // Assuming link uses dollars for simplicity based on your original '100.00' value:
-      amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2); // If link is in cents
-      // If link is in dollars: amountInput.value = parseFloat(urlAmount).toFixed(2); 
+      // Assuming the URL link passes the amount in cents (e.g., ?amount=10000)
+      amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2); 
     }
     if (urlEmail) {
       emailInput.value = urlEmail;
@@ -119,7 +117,7 @@
 
       try {
         // Call your backend to create a checkout session
-        // Note: Worker expects amount in cents, so we multiply by 100
+        // Worker expects amount in cents, so we multiply by 100
         const res = await fetch(`${WORKER_URL}/create-checkout-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
