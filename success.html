@@ -135,7 +135,6 @@
                   const chargeData = await chargeRes.json();
 
                   if (chargeRes.ok && chargeData.status === 'processing') {
-                    // ACH payment status is usually 'processing' immediately after confirmation
                     showPaymentSuccess();
                   } else {
                     showPaymentError(`Charge failed: ${chargeData.error || 'Unknown error'}`);
@@ -146,20 +145,18 @@
                 }
 
               } else {
-                // Setup Intent failed or not succeeded
                 showPaymentError('Payment method setup failed or was not completed.');
               }
             });
           } else {
-            // No session or SetupIntent ID found
             showPaymentError('Payment session data could not be retrieved.');
           }
         });
     } else if (sessionId) {
-      // This handles the standard 'mode: payment' success
+      // Handles the standard 'mode: payment' success
       showPaymentSuccess();
     } else {
-      // This handles direct access to success.html without parameters
+      // Handles direct access to success.html without parameters
       showPaymentError('No session ID found.');
     }
   </script>

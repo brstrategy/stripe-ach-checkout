@@ -38,7 +38,7 @@
       display: block; 
       font-weight: 600; 
       margin-bottom: 10px; 
-      font-size: 1.2em; /* Make labels match input size */
+      font-size: 1.2em;
     }
     #amount-input, #email-input {
       width: 100%;
@@ -89,7 +89,7 @@
     const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
     const stripe = Stripe(STRIPE_PUBLIC_KEY);
 
-    // --- URL Parameter Pre-filling (Retained) ---
+    // --- URL Parameter Pre-filling ---
     const urlParams = new URLSearchParams(window.location.search);
     const amountInput = document.getElementById('amount-input');
     const emailInput = document.getElementById('email-input');
@@ -98,7 +98,6 @@
     const urlEmail = urlParams.get('email');
 
     if (urlAmount) {
-      // Assuming the URL link passes the amount in cents (e.g., ?amount=10000)
       amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2); 
     }
     if (urlEmail) {
@@ -116,7 +115,6 @@
       }
 
       try {
-        // Call your backend to create a checkout session
         // Worker expects amount in cents, so we multiply by 100
         const res = await fetch(`${WORKER_URL}/create-checkout-session`, {
           method: 'POST',
@@ -133,7 +131,6 @@
         const data = await res.json();
 
         if (data.id) {
-          // Redirect to Stripe checkout
           const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
           if (error) {
             alert(`Stripe error: ${error.message}`);
