@@ -14,10 +14,6 @@ export default {
 
     const url = new URL(request.url);
     const pathname = url.pathname;
-    const headers = {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    };
 
     try {
       if (pathname === '/create-checkout-session') {
@@ -48,20 +44,27 @@ export default {
 
         const sessionData = await response.json();
 
-        // Debugging: log the Stripe response
         console.log('Stripe session data:', sessionData);
 
         if (sessionData.id) {
-          return new Response(JSON.stringify({ id: sessionData.id }), { headers });
+          return new Response(JSON.stringify({ id: sessionData.id }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
         } else {
           console.error('Stripe API error:', sessionData);
-          return new Response(JSON.stringify({ error: 'Failed to create session' }), { status: 500, headers });
+          return new Response(JSON.stringify({ error: 'Failed to create session' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
         }
       }
       return new Response('Not Found', { status: 404 });
     } catch (e) {
       console.error('Error in fetch handler:', e);
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
+      return new Response(JSON.stringify({ error: e.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
   }
 };
