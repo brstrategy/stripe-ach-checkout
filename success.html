@@ -1,68 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Payment Successful</title>
-  <style>
-    body {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      background: #f7f7f7;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: start;
-      min-height: 100vh;
-      margin: 0;
-      padding: 40px 20px;
-      text-align: center;
-    }
-    header {
-      width: 100%;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .logo-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .logo-img {
-      max-width: 300px;
-      width: 100%;
-      height: auto;
-      display: block;
-      margin-bottom: 15px;
-    }
-    h1 {
-      color: #4CAF50;
-    }
-    p {
-      font-size: 1.2em;
-    }
-    a {
-      display: inline-block;
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: #016FD0;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 5px;
-    }
-    a:hover {
-      background: #0A4879;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title id="pageTitle">Payment Status</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    header {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .logo-img {
+      max-width: 300px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-bottom: 15px;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    .error-h1 {
+      color: #D32F2F;
+    }
+    p {
+      font-size: 1.2em;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #016FD0;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+    a:hover {
+      background: #0A4879;
+    }
+    #statusMessage {
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <div class="logo-container">
-      <img src="images/logo.jpg" alt="Dorothy Cole Logo" class="logo-img" />
-      <div class="main-title">Secure Payment</div>
-    </div>
-  </header>
-  <h1>Payment Successful!</h1>
-  <p>Thank you for your payment.</p>
-  <a href="index.html">Make Another Payment</a>
+  <header>
+    <div class="logo-container">
+      <img src="images/logo.jpg" alt="Dorothy Cole Logo" class="logo-img" />
+      <div class="main-title">Secure Payment</div>
+    </div>
+  </header>
+  
+  <h1 id="mainHeading">Processing Payment...</h1>
+  <p id="statusMessage">Please wait while we finalize your transaction.</p>
+  <a id="homeLink" href="index.html" style="display:none;">Make Another Payment</a>
+  
+  <script>
+    const WORKER_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
+    const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
+    const stripe = Stripe(STRIPE_PUBLIC_KEY);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const mode = urlParams.get('mode');
+    const amount = urlParams.get('amount'); // Amount in cents
+
+    const mainHeading = document.getElementById('mainHeading');
+    const statusMessage = document.getElementById('statusMessage');
+    const pageTitle = document.getElementById('pageTitle');
+    const homeLink = document.getElementById('homeLink');
+
+    // Default Success State (for mode=payment)
+    function showPaymentSuccess() {
+      pageTitle.textContent = 'Payment Successful';
+      mainHeading.textContent = 'Payment Successful! 🎉';
+      mainHeading.className = '';
+      statusMessage.textContent = 'Thank you for your payment.';
+      homeLink.style.display = 'inline-block';
+    }
+
+    // Error State
+    function showPaymentError(errorMsg) {
+      pageTitle.textContent = 'Payment Error';
+      mainHeading.textContent = 'Payment Error 😞';
+      mainHeading.className = 'error-h1';
+      statusMessage.textContent = `There was an issue processing your payment. Details: ${errorMsg}`;
+      homeLink.style.display = 'inline-block';
+    }
+    
+    // Only proceed with extra logic if we're in 'setup' mode
+    if (mode === 'setup' && sessionId) {
+        // Retrieve the Checkout Session data to get the SetupIntent ID
+        stripe.retrieveCheckoutSession(sessionId).then(async ({ session }) => {
+          if (session && session.setup_intent) {
+            // Retrieve the SetupIntent to get the saved Payment Method ID
+            stripe.retrieveSetupIntent(session.setup_intent).then(async ({ setupIntent }) => {
+              if (setupIntent && setupIntent.status === 'succeeded' && setupIntent.payment_method) {
+                // Found verified Payment Method. Now call Worker to charge it.
+                const customerId = session.customer;
+                const paymentMethodId = setupIntent.payment_method;
+
+                statusMessage.textContent = 'Saved payment method confirmed. Finalizing charge...';
+                
+                // Call new Worker endpoint to create and confirm Payment Intent
+                try {
+                  const chargeRes = await fetch(`${WORKER_URL}/process-saved-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      customerId: customerId,
+                      paymentMethodId: paymentMethodId,
+                      amount: parseInt(amount), // Amount is already in cents from the URL
+                    })
+                  });
+
+                  const chargeData = await chargeRes.json();
+
+                  if (chargeRes.ok && chargeData.status === 'processing') {
+                    // ACH payment status is usually 'processing' immediately after confirmation
+                    showPaymentSuccess();
+                  } else {
+                    showPaymentError(`Charge failed: ${chargeData.error || 'Unknown error'}`);
+                  }
+
+                } catch (err) {
+                  showPaymentError(`Network Error during charge: ${err.message}`);
+                }
+
+              } else {
+                // Setup Intent failed or not succeeded
+                showPaymentError('Payment method setup failed or was not completed.');
+              }
+            });
+          } else {
+            // No session or SetupIntent ID found
+            showPaymentError('Payment session data could not be retrieved.');
+          }
+        });
+    } else if (sessionId) {
+      // This handles the standard 'mode: payment' success
+      showPaymentSuccess();
+    } else {
+      // This handles direct access to success.html without parameters
+      showPaymentError('No session ID found.');
+    }
+  </script>
 </body>
 </html>
