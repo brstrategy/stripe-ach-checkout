@@ -81,7 +81,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
     const mode = urlParams.get('mode');
-    const amount = urlParams.get('amount'); // Amount in cents
+    const amount = urlParams.get('amount'); // Amount is in cents
 
     const mainHeading = document.getElementById('mainHeading');
     const statusMessage = document.getElementById('statusMessage');
@@ -106,7 +106,7 @@
       homeLink.style.display = 'inline-block';
     }
     
-    // Only proceed with extra logic if we're in 'setup' mode
+    // Check for Setup Mode, which requires a follow-up charge
     if (mode === 'setup' && sessionId) {
         // Retrieve the Checkout Session data to get the SetupIntent ID
         stripe.retrieveCheckoutSession(sessionId).then(async ({ session }) => {
@@ -128,7 +128,7 @@
                     body: JSON.stringify({ 
                       customerId: customerId,
                       paymentMethodId: paymentMethodId,
-                      amount: parseInt(amount), // Amount is already in cents from the URL
+                      amount: parseInt(amount), 
                     })
                   });
 
