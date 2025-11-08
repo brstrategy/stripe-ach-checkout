@@ -35,9 +35,7 @@ export default {
             line_items: JSON.stringify([{
               price_data: {
                 currency: 'usd',
-                product_data: {
-                  name: 'Client Payment',
-                },
+                product_data: { name: 'Client Payment' },
                 unit_amount: amount,
               },
               quantity: 1,
