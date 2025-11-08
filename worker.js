@@ -1,14 +1,16 @@
 export default {
   async fetch(request, env) {
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*', // Or your specific domain
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+
     if (request.method === 'OPTIONS') {
+      // Handle preflight CORS request
       return new Response(null, {
         status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Max-Age': '86400',
-        },
+        headers: corsHeaders,
       });
     }
 
@@ -19,7 +21,7 @@ export default {
       if (pathname === '/create-checkout-session') {
         const { amount, email } = await request.json();
 
-        const params = new URLSearchParams({
+        const bodyParams = new URLSearchParams({
           payment_method_types: 'us_bank_account,card',
           mode: 'setup',
           line_items: JSON.stringify([{
@@ -31,8 +33,8 @@ export default {
             quantity: 1,
           }]),
           customer_email: email,
-          success_url: `${new URL(request.url).origin}/success.html`,
-          cancel_url: `${new URL(request.url).origin}/cancel.html`,
+          success_url: `${url.origin}/success.html`,
+          cancel_url: `${url.origin}/cancel.html`,
         }).toString();
 
         const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -41,32 +43,36 @@ export default {
             'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: params,
+          body: bodyParams,
         });
 
         const sessionData = await response.json();
 
-        console.log('Stripe session data:', sessionData);
-
-        if (sessionData.id) {
-          return new Response(JSON.stringify({ id: sessionData.id }), {
-            headers: { 'Content-Type': 'application/json' },
-          });
+        if (response.ok && sessionData.id) {
+          return new Response(
+            JSON.stringify({ id: sessionData.id }),
+            { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+          );
         } else {
           console.error('Stripe API error:', sessionData);
-          return new Response(JSON.stringify({ error: 'Failed to create session' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return new Response(
+            JSON.stringify({ error: sessionData.error || 'Stripe error' }),
+            { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+          );
         }
       }
-      return new Response('Not Found', { status: 404 });
+
+      // Not found route
+      return new Response('Not Found', {
+        status: 404,
+        headers: corsHeaders,
+      });
     } catch (e) {
       console.error('Error in fetch handler:', e);
-      return new Response(JSON.stringify({ error: e.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: e.message }),
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
     }
   }
 };
