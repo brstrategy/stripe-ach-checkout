@@ -126,8 +126,8 @@
             </div>
 
             <div class="form-group">
-                <label for="invoice_id">Invoice # (Optional):</label>
-                <input type="text" id="invoice_id" name="invoice_id" placeholder="e.g., INV-1001" />
+                <label for="invoice_id">Invoice #:</label>
+                <input type="text" id="invoice_id" name="invoice_id" required placeholder="e.g., INV-1001" />
             </div>
             
             <button type="submit" id="submit-button" class="submit-button">Pay Now</button>
@@ -138,8 +138,8 @@
     <script>
         // --- Configuration ---
         const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
-        // IMPORTANT: REPLACE THIS WITH YOUR ACTUAL WORKER URL
-        const WORKER_ENDPOINT = 'https://custom-stripe-checkout-worker.brigham.workers.dev/create-checkout-session';
+        // IMPORTANT: REPLACE THIS WITH YOUR ACTUAL WORKER URL BASE (e.g., https://my-worker.my-username.workers.dev)
+        const WORKER_BASE_URL = 'https://YOUR_WORKER_URL'; 
         const stripe = Stripe(STRIPE_PUBLIC_KEY);
         
         // Get URL parameters
@@ -149,22 +149,17 @@
         const paymentForm = document.getElementById('payment-form');
         const emailInput = document.getElementById('email');
         const amountInput = document.getElementById('amount');
-        const invoiceIdInput = document.getElementById('invoice_id'); // Selector for the new input field
+        const invoiceIdInput = document.getElementById('invoice_id');
         const submitButton = document.getElementById('submit-button');
         const errorMessageDiv = document.getElementById('error-message');
 
-        // --- Data Prefill Logic (Updated) ---
+        // --- Data Prefill Logic ---
         if (urlParams.has('email')) {
             emailInput.value = urlParams.get('email');
-            // Removed readOnly to allow users to change prefilled email if needed
         }
-        
         if (urlParams.has('amount')) {
             amountInput.value = urlParams.get('amount');
-            // Removed readOnly
         }
-
-        // Prefill Invoice ID
         if (urlParams.has('invoice_id')) {
             invoiceIdInput.value = urlParams.get('invoice_id');
         }
@@ -190,39 +185,67 @@
             
             errorMessageDiv.style.display = 'none';
             submitButton.disabled = true;
-            submitButton.textContent = 'Processing...';
+            submitButton.textContent = 'Checking Invoice...';
 
             const email = emailInput.value.trim();
             const amountInDollars = amountInput.value.trim();
             const amountInCents = amountToCents(amountInDollars);
-            // Read the invoice ID directly from the visible input field
             const invoiceId = invoiceIdInput.value.trim(); 
             
-            if (!email || !amountInCents || amountInCents < 50) {
-                return showErrorMessage('Please enter a valid email and an amount greater than $0.50.');
+            if (!email || !amountInCents || amountInCents < 50 || !invoiceId) {
+                // Client-side validation check
+                return showErrorMessage('Please ensure all fields (Email, Amount, and Invoice #) are valid and complete.');
             }
 
             try {
-                // 1. Call the Worker to create a Checkout Session
-                const response = await fetch(WORKER_ENDPOINT, {
+                // STEP 1: Check for Duplicates
+                const duplicateCheckResponse = await fetch(`${WORKER_BASE_URL}/check-duplicate-invoice`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoiceId: invoiceId }),
+                });
+                
+                const checkData = await duplicateCheckResponse.json();
+
+                if (checkData.error) {
+                    return showErrorMessage(`Invoice check failed: ${checkData.error}`);
+                }
+
+                // STEP 2: Handle Duplicate Warning
+                if (checkData.isDuplicate) {
+                    submitButton.textContent = 'Pay Now (Duplicate Invoice)'; 
+                    
+                    // Show the confirmation popup
+                    const proceed = confirm(`Warning: Invoice #${invoiceId} already has a payment that is processing or was successful. Are you sure you want to proceed with a second payment?`);
+                    
+                    if (!proceed) {
+                        return showErrorMessage('Payment cancelled by user.');
+                    }
+                }
+                
+                // If check passed OR user confirmed, proceed to create the session
+                submitButton.textContent = 'Creating Session...';
+                
+                // STEP 3: Create Checkout Session
+                const sessionResponse = await fetch(`${WORKER_BASE_URL}/create-checkout-session`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: email,
                         amount: amountInCents,
-                        invoiceId: invoiceId, // SEND THE INVOICE ID TO THE WORKER
+                        invoiceId: invoiceId,
                     }),
                 });
                 
-                const data = await response.json();
+                const sessionData = await sessionResponse.json();
 
-                if (data.error) {
-                    return showErrorMessage(data.error);
+                if (sessionData.error) {
+                    return showErrorMessage(sessionData.error);
                 }
 
-                // 2. Redirect to Stripe Checkout
+                // STEP 4: Redirect to Stripe Checkout
                 const result = await stripe.redirectToCheckout({
-                    sessionId: data.id,
+                    sessionId: sessionData.id,
                 });
 
                 if (result.error) {

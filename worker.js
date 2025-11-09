@@ -22,12 +22,14 @@ export default {
         const pathname = url.pathname;
 
         try {
-            // --- THE ONLY PUBLIC ENDPOINT ---
+            // --- Router to handle both API endpoints ---
             if (pathname === '/create-checkout-session' && request.method === 'POST') {
                 return handleCreateCheckoutSession(request, env); 
             }
+            if (pathname === '/check-duplicate-invoice' && request.method === 'POST') {
+                return handleCheckDuplicateInvoice(request, env); 
+            }
             
-            // Not found route
             return new Response('Not Found', {
                 status: 404,
                 headers: corsHeaders,
@@ -44,19 +46,54 @@ export default {
 };
 
 // =================================================================
-// === HANDLER FUNCTION (UPDATED) ==================================
+// === HANDLER: DUPLICATE CHECK ====================================
 // =================================================================
 
+/**
+ * Checks Stripe for existing Payment Intents associated with the invoice ID.
+ */
+async function handleCheckDuplicateInvoice(request, env) {
+    const { invoiceId } = await request.json();
+
+    if (!invoiceId) {
+        return new Response(JSON.stringify({ error: 'Invoice ID is required for check.' }), { status: 400, headers: corsHeaders });
+    }
+
+    // Query for Payment Intents with matching metadata and status 'succeeded' or 'processing'
+    const query = `metadata["invoice_number"]:"${encodeURIComponent(invoiceId)}" AND (status:"succeeded" OR status:"processing")`;
+
+    const searchRes = await fetch(`https://api.stripe.com/v1/payment_intents/search?query=${query}`, {
+        headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
+    });
+    const searchData = await searchRes.json();
+
+    if (searchRes.ok && searchData.data) {
+        const isDuplicate = searchData.data.length > 0;
+        return new Response(
+            JSON.stringify({ isDuplicate: isDuplicate }),
+            { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
+    } else {
+        console.error('Stripe search error:', searchData);
+        return new Response(
+            JSON.stringify({ error: 'Failed to perform duplicate check.' }),
+            { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
+    }
+}
+
+// =================================================================
+// === HANDLER: CREATE SESSION =====================================
+// =================================================================
 
 /**
  * HANDLES CREATING A NEW CHECKOUT SESSION 
  */
 async function handleCreateCheckoutSession(request, env) {
-    // UPDATED: Read invoiceId from the request body
     const { amount, email, invoiceId } = await request.json();
 
-    if (!email || !amount || amount <= 0) {
-        return new Response(JSON.stringify({ error: 'Missing email or amount' }), { status: 400, headers: corsHeaders });
+    if (!email || !amount || amount <= 0 || !invoiceId) {
+        return new Response(JSON.stringify({ error: 'Missing required field: Email, Amount, or Invoice ID.' }), { status: 400, headers: corsHeaders });
     }
 
     // 1. SEARCH/CREATE STRIPE CUSTOMER
@@ -88,19 +125,19 @@ async function handleCreateCheckoutSession(request, env) {
         customer: customerId,
         client_reference_id: customerId,
         
-        // ADDED: Request customer name if missing from Stripe record
+        // Ensure name is collected if missing
         'customer_update[name]': 'auto', 
         
-        // ADDED: Associate the Invoice ID as metadata on the Payment Intent
-        'payment_intent_data[metadata][invoice_number]': invoiceId || '', // Use invoiceId or empty string
+        // Attach the Invoice ID as metadata on the Payment Intent
+        'payment_intent_data[metadata][invoice_number]': invoiceId || '', 
         
-        // Removed: 'payment_intent_data[setup_future_usage]': 'off_session' (Fixes duplicate PM creation)
+        // Fix: Removed setup_future_usage to stop duplicate PM creation
         
         success_url: `${CLIENT_DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}&mode=${mode}&amount=${amount}`, 
         cancel_url: `${CLIENT_DOMAIN}/cancel.html`,
     };
 
-    // Add line item for payment mode
+    // Add line item
     params['line_items[0][quantity]'] = '1';
     params['line_items[0][price_data][currency]'] = 'usd';
     params['line_items[0][price_data][product_data][name]'] = 'Client Payment';
