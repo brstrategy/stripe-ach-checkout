@@ -1,3 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dorothy Cole - Payment</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        /* Your existing styles */
+        body {
+            background: #FFFFFF;
+            color: #333;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        header { width: 100%; text-align: center; margin-bottom: 30px; }
+        .logo-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .logo-img { max-width: 300px; width: 100%; height: auto; display: block; margin-bottom: 15px; }
+        h1 { font-size: 2.5em; margin: 0; color: #0A4879; }
+        .main-title { font-size: 1.5em; margin-top: 5px; color: #0A4879; }
+        .container {
+            background: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        #amount-input, #email-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.2em;
+            border: 1px solid #0A4879;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.2em;
+            background-color: #016FD0;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-bottom: 10px;
+        }
+        button:hover { background-color: #0A4879; }
+        #loading-indicator {
+            text-align: center;
+            margin-top: 15px;
+            color: #016FD0;
+            font-weight: 600;
+        }
+    </style>
+</head>
 <body>
     <header>
         <div class="logo-container">
@@ -27,8 +99,7 @@
         // --- DOM Elements ---
         const amountInput = document.getElementById('amount-input');
         const emailInput = document.getElementById('email-input');
-        // NOTE: CHANGED FROM nextBtn TO payBtn
-        const payBtn = document.getElementById('payBtn');
+        const payBtn = document.getElementById('payBtn'); 
         const loadingIndicator = document.getElementById('loading-indicator');
         
         // --- URL Parameter Pre-filling (Unchanged) ---
@@ -44,7 +115,6 @@
         }
         // ------------------------------------
 
-        // ATTACH LISTENER TO payBtn
         payBtn.onclick = async () => {
             const amount = parseFloat(amountInput.value);
             const email = emailInput.value.trim();
@@ -55,14 +125,12 @@
             }
 
             payBtn.disabled = true;
-            // CHANGED loading text
             loadingIndicator.textContent = 'Creating checkout session...';
             loadingIndicator.style.display = 'block';
 
             try {
                 const amountInCents = Math.round(amount * 100);
 
-                // *** MINIMAL CHANGE: Directly call the create-checkout-session endpoint ***
                 const checkoutRes = await fetch(`${WORKER_URL}/create-checkout-session`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -78,7 +146,6 @@
                 const checkoutData = await checkoutRes.json();
                 
                 if (checkoutData.id) {
-                    // Redirect to Stripe Checkout. Link handles re-use internally.
                     const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.id });
                     if (error) {
                         alert(`Stripe error: ${error.message}`);
