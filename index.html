@@ -62,6 +62,12 @@
             margin-bottom: 10px;
         }
         button:hover { background-color: #0A4879; }
+        #loading-indicator {
+            text-align: center;
+            margin-top: 15px;
+            color: #016FD0;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -80,69 +86,106 @@
             <label for="email-input">Email:</label>
             <input type="email" id="email-input" placeholder="your.email@example.com" />
 
-            <button id="payBtn">Pay with Stripe</button>
-            
+            <button id="nextBtn">Next: Check Payment Options</button>
+            <div id="loading-indicator" style="display:none;">Checking for saved accounts...</div>
         </div>
     </div>
 
     <script>
-        const WORKER_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
-        const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
-        const stripe = Stripe(STRIPE_PUBLIC_KEY);
+      const WORKER_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
+      const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
+      const stripe = Stripe(STRIPE_PUBLIC_KEY);
 
-        // --- URL Parameter Pre-filling ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const amountInput = document.getElementById('amount-input');
-        const emailInput = document.getElementById('email-input');
+      // --- DOM Elements ---
+      const amountInput = document.getElementById('amount-input');
+      const emailInput = document.getElementById('email-input');
+      const nextBtn = document.getElementById('nextBtn');
+      const loadingIndicator = document.getElementById('loading-indicator');
+        
+      // --- URL Parameter Pre-filling ---
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlAmount = urlParams.get('amount');
+      const urlEmail = urlParams.get('email');
 
-        const urlAmount = urlParams.get('amount');
-        const urlEmail = urlParams.get('email');
+      if (urlAmount) {
+        // Note: We expect the URL amount to be in cents, so we convert it back to dollars for display
+        amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2);
+      }
+      if (urlEmail) {
+        emailInput.value = urlEmail;
+      }
+      // ------------------------------------
 
-        if (urlAmount) {
-            amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2); 
+      nextBtn.onclick = async () => {
+        const amount = parseFloat(amountInput.value);
+        const email = emailInput.value.trim();
+
+        if (!amount || amount <=0 || !email) {
+          alert('Please enter a valid amount and email.');
+          return;
         }
-        if (urlEmail) {
-            emailInput.value = urlEmail;
-        }
-        // ------------------------------------
 
-        document.getElementById('payBtn').onclick = async () => {
-            const amount = parseFloat(amountInput.value);
-            const email = emailInput.value.trim();
+        nextBtn.disabled = true;
+        loadingIndicator.style.display = 'block';
 
-            if (!amount || amount <=0 || !email) {
-                alert('Please enter valid amount and email.');
-                return;
+        try {
+          const amountInCents = Math.round(amount * 100);
+
+          // 1. CALL NEW WORKER ENDPOINT TO CHECK FOR SAVED METHODS
+          const res = await fetch(`${WORKER_URL}/check-saved-methods`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, amount: amountInCents }),
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            alert(`Server error during check: ${errorData.error || res.status}`);
+            return;
+          }
+
+          const data = await res.json();
+
+          if (data.status === 'SAVED_FOUND') {
+            // 2. ROUTE TO CUSTOM PAYMENT SELECTION PAGE
+            const redirectUrl = `payment_selection.html?customerId=${data.customerId}&amount=${amountInCents}&email=${encodeURIComponent(email)}`;
+            window.location.href = redirectUrl;
+
+          } else if (data.status === 'NEW_CUSTOMER' || data.status === 'NO_SAVED') {
+            // 3. ROUTE TO STRIPE CHECKOUT FOR NEW SETUP
+            // We call the old endpoint, which will create the session and return the ID.
+            const checkoutRes = await fetch(`${WORKER_URL}/create-checkout-session`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: amountInCents, email }),
+            });
+
+            if (!checkoutRes.ok) {
+              const errorData = await checkoutRes.json();
+              alert(`Server error creating checkout: ${errorData.error || checkoutRes.status}`);
+              return;
             }
 
-            try {
-                // Worker expects amount in cents, so we multiply by 100
-                const res = await fetch(`${WORKER_URL}/create-checkout-session`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: Math.round(amount * 100), email }),
-                });
-
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    alert(`Server error: ${errorData.error || res.status}`);
-                    return;
-                }
-
-                const data = await res.json();
-
-                if (data.id) {
-                    const { error } = await stripe.redirectToCheckout({ sessionId: data.id });
-                    if (error) {
-                        alert(`Stripe error: ${error.message}`);
-                    }
-                } else {
-                    alert('Failed to create checkout session. Please try again.');
-                }
-            } catch (err) {
-                alert(`Error: ${err.message}`);
+            const checkoutData = await checkoutRes.json();
+            
+            if (checkoutData.id) {
+              const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.id });
+              if (error) {
+                alert(`Stripe error: ${error.message}`);
+              }
+            } else {
+              alert('Failed to create checkout session. Please try again.');
             }
-        };
+          } else {
+            alert('Unknown response from server.');
+          }
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+        } finally {
+          nextBtn.disabled = false;
+          loadingIndicator.style.display = 'none';
+        }
+      };
     </script>
 </body>
 </html>
