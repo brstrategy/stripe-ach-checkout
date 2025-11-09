@@ -54,9 +54,9 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             max-width: 400px;
             width: 100%;
-            margin: 20px auto 0; /* Adjusted margin-top */
+            margin: 20px auto 0;
             box-sizing: border-box;
-            text-align: left; /* Align text inside container */
+            text-align: left;
         }
         .data-field {
             margin-bottom: 20px;
@@ -74,7 +74,7 @@
             border: 1px solid #0A4879;
             border-radius: 5px;
             box-sizing: border-box;
-            background-color: #f7f7f7; /* Light background for the "input" box */
+            background-color: #f7f7f7;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
@@ -83,7 +83,7 @@
 
         a {
             display: inline-block;
-            margin-top: 30px; /* Increased margin */
+            margin-top: 30px;
             padding: 14px 24px;
             background: #016FD0;
             color: #fff;
@@ -142,11 +142,11 @@
             return `$${dollars}`;
         }
 
-        function showPaymentSuccess(id, cents) {
+        function showPaymentSuccess(id, cents, message) {
             pageTitle.textContent = 'Payment Confirmation';
             mainHeading.textContent = 'Payment Confirmed! ✅';
             mainHeading.className = '';
-            statusMessage.textContent = 'Thank you for your successful payment. Details are below:';
+            statusMessage.textContent = message;
             homeLink.style.display = 'inline-block';
 
             displayAmount.textContent = formatAmount(cents);
@@ -162,6 +162,7 @@
             homeLink.style.display = 'inline-block';
         }
 
+        // --- Core Logic ---
         if (sessionId && amountInCents) {
             stripe.retrieveCheckoutSession(sessionId).then(({ session, error }) => {
                 if (error) {
@@ -169,12 +170,20 @@
                     return;
                 }
                 
-                if (session && session.payment_status === 'paid' && session.status === 'complete') {
-                    showPaymentSuccess(sessionId, amountInCents);
+                if (session && session.status === 'complete') {
+                    if (session.payment_status === 'paid') {
+                        // Crucial message for ACH payments, which clear asynchronously
+                        const message = 'Thank you! Your payment has been successfully initiated. Since this is an ACH payment, it will be marked as **cleared** in 3-5 business days.';
+                        showPaymentSuccess(sessionId, amountInCents, message);
+                    } else if (session.payment_status === 'unpaid') {
+                        showPaymentError('The payment process was completed, but the payment itself is currently **unpaid** or failed.');
+                    } else {
+                        showPaymentError(`Payment status: ${session.payment_status} - Verification failed.`);
+                    }
                 } else if (session && session.status === 'open') {
-                    showPaymentError('Payment is still open. Please complete the banking authorization steps.');
+                    showPaymentError('Payment is still open. Please complete the banking authorization steps on the Stripe page.');
                 } else {
-                    showPaymentError('Payment status could not be verified.');
+                    showPaymentError('Payment session data could not be verified or is incomplete.');
                 }
             }).catch(err => {
                  showPaymentError(`Verification failed: ${err.message}`);
