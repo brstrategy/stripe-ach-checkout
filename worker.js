@@ -22,7 +22,7 @@ export default {
     const pathname = url.pathname;
 
     try {
-      // *** MINIMAL CHANGE: Removed /check-saved-methods and /process-saved-payment routes ***
+      // *** CHANGE: The only public endpoint is now for creating the checkout session. ***
       
       // --- STEP A: CREATE CHECKOUT SESSION (The ONLY public endpoint) ---
       if (pathname === '/create-checkout-session' && request.method === 'POST') {
@@ -46,12 +46,12 @@ export default {
 };
 
 // =================================================================
-// === HANDLER FUNCTIONS (Kept for reference, but unreachable) =======
+// === HANDLER FUNCTIONS ===========================================
 // =================================================================
 
 /**
  * Checks for existing customer and verified ACH payment methods.
- * (Now Unreachable via public Worker route, but kept for future use)
+ * (This function is no longer reachable via public Worker route, but kept here for completeness/reference.)
  */
 async function handleCheckSavedMethods(request, env) {
   const { email, amount } = await request.json(); // amount in cents
@@ -59,8 +59,7 @@ async function handleCheckSavedMethods(request, env) {
   if (!email || !amount || amount <= 0) {
     return new Response(JSON.stringify({ error: 'Missing email or amount' }), { status: 400, headers: corsHeaders });
   }
-  // ... (rest of the function logic is UNCHANGED) ...
-  // Note: The function body is unchanged from your current worker.js
+
   const searchRes = await fetch(`https://api.stripe.com/v1/customers/search?query=email:'${encodeURIComponent(email)}'`, {
     headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
   });
@@ -105,7 +104,7 @@ async function handleCheckSavedMethods(request, env) {
 
 /**
  * HANDLES CREATING A NEW CHECKOUT SESSION 
- * (Unchanged, this is the function the index.html now calls directly)
+ * (This is the required function now called directly by index.html)
  */
 async function handleCreateCheckoutSession(request, env) {
   const { amount, email } = await request.json();
@@ -175,13 +174,11 @@ async function handleCreateCheckoutSession(request, env) {
 
 /**
  * HANDLES OFF-SESSION CHARGE 
- * (Now Unreachable via public Worker route, but kept for future use)
+ * (This function is no longer reachable via public Worker route, but kept here for completeness/reference.)
  */
 async function handleProcessSavedPayment(request, env) {
   const { customerId, paymentMethodId, amount } = await request.json();
 
-  // ... (rest of the function logic is UNCHANGED) ...
-  // Note: The function body is unchanged from your current worker.js
   const intentParams = new URLSearchParams({
     amount: amount,
     currency: 'usd',
