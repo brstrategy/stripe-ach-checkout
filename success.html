@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title id="pageTitle">Payment Status</title>
-    <script src="https://js.stripe.com/v3/"></script>
+    <title>Payment Initiated</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -36,14 +35,33 @@
             margin-bottom: 15px;
         }
         h1 {
-            color: #4CAF50;
+            color: #4CAF50; /* Green for success */
             margin-top: 0;
-        }
-        .error-h1 {
-            color: #D32F2F;
+            font-size: 2.5em;
         }
         p {
             font-size: 1.2em;
+            max-width: 500px;
+            margin: 10px auto;
+        }
+        ul {
+            text-align: left;
+            max-width: 500px;
+            margin: 20px auto 30px;
+            padding-left: 20px;
+            list-style-type: none; /* Remove default bullets */
+        }
+        li {
+            margin-bottom: 15px;
+            line-height: 1.4;
+            padding-left: 25px; /* Space for custom bullet */
+            position: relative;
+        }
+        li::before {
+            content: '👉'; /* Custom bullet point */
+            position: absolute;
+            left: 0;
+            top: 0;
         }
         
         /* --- STYLES FOR DATA BOX LOOK --- */
@@ -105,101 +123,49 @@
         </div>
     </header>
     
-    <h1 id="mainHeading">Processing...</h1>
-    <p id="statusMessage">Verifying transaction details.</p>
+    <h1 id="mainHeading">Payment Initiated! ✅</h1>
+    <p>Thank you for initiating your payment. Please keep the following in mind:</p>
 
-    <div id="dataContainer" class="container" style="display:none;">
+    <ul>
+        <li>
+            **ACH Payment Clearance:** Since this is an ACH transaction, the funds will typically be marked as **cleared** in **3 to 5 business days**. Your account will be debited during this time.
+        </li>
+        <li>
+            **Account Verification (Microdeposits):** If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an **email from Stripe** with instructions on how to complete the microdeposit verification process.
+        </li>
+    </ul>
+
+    <div id="dataContainer" class="container">
         <div class="data-field">
             <label class="data-label">Payment Amount:</label>
             <div id="displayAmount" class="data-value">$0.00</div>
         </div>
         <div class="data-field">
-            <label class="data-label">Transaction Reference:</label>
+            <label class="data-label">Transaction Reference (Session ID):</label>
             <div id="displaySessionId" class="data-value">N/A</div>
         </div>
     </div>
-    <a id="homeLink" href="index.html" style="display:none;">Make Another Payment</a>
+    <a href="index.html">Make Another Payment</a>
     
     <script>
-        const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
-        const stripe = Stripe(STRIPE_PUBLIC_KEY);
-
+        // --- Minimal Script to populate Amount/ID from URL ---
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session_id');
-
-        const mainHeading = document.getElementById('mainHeading');
-        const statusMessage = document.getElementById('statusMessage');
-        const pageTitle = document.getElementById('pageTitle');
-        const homeLink = document.getElementById('homeLink');
-        const dataContainer = document.getElementById('dataContainer');
+        const amountInCents = urlParams.get('amount');
+        
         const displayAmount = document.getElementById('displayAmount');
         const displaySessionId = document.getElementById('displaySessionId');
 
-        function formatAmount(cents, currency = 'USD') {
+        function formatAmount(cents) {
             if (!cents || isNaN(cents)) return '$0.00';
+            // Assuming USD and that 'amount' URL param is in cents (which it is from the Worker)
             const dollars = (parseInt(cents) / 100).toFixed(2);
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(dollars);
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(dollars);
         }
 
-        // --- Success message for completed Stripe Checkout (Authorization or Payment) ---
-        function showPaymentSuccess(amountCents, currency, id) {
-            pageTitle.textContent = 'Payment Initiated';
-            mainHeading.textContent = 'Payment Initiated! ✅';
-            mainHeading.className = '';
-            
-            statusMessage.innerHTML = 'Thank you for initiating your payment. Your transaction reference is below. Please note:<ul><li>**ACH Payment Clearance:** Funds will be marked as **cleared** in 3-5 business days.</li><li>**Account Verification:** If you used manual bank verification (microdeposits), you will receive an email from Stripe with instructions on how to complete the process.</li></ul>';
-            
-            homeLink.style.display = 'inline-block';
-
-            document.querySelector('.data-label').textContent = 'Payment Amount:';
-            displayAmount.textContent = formatAmount(amountCents, currency);
-            displaySessionId.textContent = id;
-            dataContainer.style.display = 'block';
-        }
-
-        // --- Error message for incomplete Stripe Checkout ---
-        function showPaymentError(errorMsg) {
-            pageTitle.textContent = 'Payment Error';
-            mainHeading.textContent = 'Payment Error 😞';
-            mainHeading.className = 'error-h1';
-            statusMessage.textContent = `There was an issue processing your transaction: ${errorMsg}. Please try again.`;
-            homeLink.style.display = 'inline-block';
-        }
-
-        // --- Core Logic ---
-        if (sessionId) {
-            // Immediately start retrieval without a "Verifying" message visible for long
-            mainHeading.textContent = 'Processing...';
-            statusMessage.textContent = 'Verifying transaction details.';
-
-            stripe.retrieveCheckoutSession(sessionId).then(({ session, error }) => {
-                if (error) {
-                    showPaymentError(`Verification Error: ${error.message}`);
-                    return;
-                }
-                
-                // If the customer successfully completed the flow, show the success state.
-                if (session && session.status === 'complete') {
-                    const amountCents = session.amount_total;
-                    const currency = session.currency;
-                    
-                    showPaymentSuccess(amountCents, currency, sessionId);
-                    
-                } else if (session && session.status === 'open') {
-                    // Customer was redirected but didn't finish the final step.
-                    showPaymentError('The payment process was not completed on the Stripe page.');
-                } else {
-                    // General failure or invalid state.
-                    showPaymentError('The payment session could not be verified or is in an invalid state.');
-                }
-            }).catch(err => {
-                 showPaymentError(`Network Error during verification: ${err.message}`);
-            });
-            
-        } else {
-            // No session ID in the URL is a critical error.
-            showPaymentError('Invalid access: Missing required session ID.');
-        }
+        // Populate the fields immediately
+        displayAmount.textContent = formatAmount(amountInCents);
+        displaySessionId.textContent = sessionId || 'N/A';
     </script>
 </body>
 </html>
