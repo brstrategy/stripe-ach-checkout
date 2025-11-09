@@ -44,66 +44,20 @@ export default {
 };
 
 // =================================================================
-// === HANDLER FUNCTIONS (Kept for reference, but unreachable) =======
+// === HANDLER FUNCTION (UPDATED) ==================================
 // =================================================================
-
-/**
- * Checks for existing customer and verified ACH payment methods.
- */
-async function handleCheckSavedMethods(request, env) {
-    const { email, amount } = await request.json(); // amount in cents
-
-    if (!email || !amount || amount <= 0) {
-        return new Response(JSON.stringify({ error: 'Missing email or amount' }), { status: 400, headers: corsHeaders });
-    }
-
-    const searchRes = await fetch(`https://api.stripe.com/v1/customers/search?query=email:'${encodeURIComponent(email)}'`, {
-        headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
-    });
-    const searchData = await searchRes.json();
-    
-    if (searchData.data && searchData.data.length > 0) {
-        const customerId = searchData.data[0].id;
-
-        const pmsRes = await fetch(`https://api.stripe.com/v1/payment_methods?customer=${customerId}&type=us_bank_account&limit=100`, {
-            headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
-        });
-        const pmsData = await pmsRes.json();
-        
-        const savedMethods = pmsData.data
-            .filter(pm => pm.us_bank_account.status === 'verified')
-            .map(pm => ({
-                id: pm.id,
-                bank_name: pm.us_bank_account.bank_name,
-                last4: pm.us_bank_account.last4,
-                display: `${pm.us_bank_account.bank_name} (****${pm.us_bank_account.last4})`
-            }));
-            
-        if (savedMethods.length > 0) {
-            return new Response(
-                JSON.stringify({ status: 'SAVED_FOUND', customerId, savedMethods }), 
-                { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-            );
-        } else {
-            return new Response(
-                JSON.stringify({ status: 'NO_SAVED', customerId }), 
-                { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-            );
-        }
-    } else {
-        return new Response(
-            JSON.stringify({ status: 'NEW_CUSTOMER' }), 
-            { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
-    }
-}
 
 
 /**
  * HANDLES CREATING A NEW CHECKOUT SESSION 
  */
 async function handleCreateCheckoutSession(request, env) {
-    const { amount, email } = await request.json();
+    // UPDATED: Read invoiceId from the request body
+    const { amount, email, invoiceId } = await request.json();
+
+    if (!email || !amount || amount <= 0) {
+        return new Response(JSON.stringify({ error: 'Missing email or amount' }), { status: 400, headers: corsHeaders });
+    }
 
     // 1. SEARCH/CREATE STRIPE CUSTOMER
     let customerId;
@@ -133,7 +87,15 @@ async function handleCreateCheckoutSession(request, env) {
         mode: mode,
         customer: customerId,
         client_reference_id: customerId,
-        'payment_intent_data[setup_future_usage]': 'off_session', 
+        
+        // ADDED: Request customer name if missing from Stripe record
+        'customer_update[name]': 'auto', 
+        
+        // ADDED: Associate the Invoice ID as metadata on the Payment Intent
+        'payment_intent_data[metadata][invoice_number]': invoiceId || '', // Use invoiceId or empty string
+        
+        // Removed: 'payment_intent_data[setup_future_usage]': 'off_session' (Fixes duplicate PM creation)
+        
         success_url: `${CLIENT_DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}&mode=${mode}&amount=${amount}`, 
         cancel_url: `${CLIENT_DOMAIN}/cancel.html`,
     };
@@ -161,46 +123,6 @@ async function handleCreateCheckoutSession(request, env) {
         console.error('Stripe API error:', sessionData);
         return new Response(
             JSON.stringify({ error: sessionData.error ? (sessionData.error.message || 'Stripe error') : 'Internal server error' }),
-            { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
-    }
-}
-
-
-/**
- * HANDLES OFF-SESSION CHARGE 
- */
-async function handleProcessSavedPayment(request, env) {
-    const { customerId, paymentMethodId, amount } = await request.json();
-
-    const intentParams = new URLSearchParams({
-        amount: amount,
-        currency: 'usd',
-        customer: customerId,
-        payment_method: paymentMethodId,
-        confirm: 'true',
-        off_session: 'true',
-        'payment_method_types[0]': 'us_bank_account',
-        description: `Client Payment via saved ACH method`,
-    }).toString();
-
-    const intentRes = await fetch('https://api.stripe.com/v1/payment_intents', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: intentParams,
-    });
-
-    const intentData = await intentRes.json();
-    
-    if (intentRes.ok) {
-        return new Response(
-            JSON.stringify({ status: intentData.status, paymentIntentId: intentData.id }),
-            { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
-    } else {
-        console.error('Payment Intent error:', intentData);
-        return new Response(
-            JSON.stringify({ error: intentData.error ? intentData.error.message : 'Failed to process saved payment.' }),
             { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
     }

@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Dorothy Cole - Payment</title>
+    <title>Secure Payment</title>
     <script src="https://js.stripe.com/v3/"></script>
     <style>
-        /* Your existing styles */
         body {
-            background: #FFFFFF;
-            color: #333;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #FFFFFF;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -18,12 +16,30 @@
             min-height: 100vh;
             margin: 0;
             padding: 40px 20px;
+            text-align: center;
         }
-        header { width: 100%; text-align: center; margin-bottom: 30px; }
-        .logo-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
-        .logo-img { max-width: 300px; width: 100%; height: auto; display: block; margin-bottom: 15px; }
-        h1 { font-size: 2.5em; margin: 0; color: #0A4879; }
-        .main-title { font-size: 1.5em; margin-top: 5px; color: #0A4879; }
+        header { 
+            width: 100%; 
+            text-align: center; 
+            margin-bottom: 30px; 
+        }
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .logo-img {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            display: block;
+            margin-bottom: 15px;
+        }
+        .main-title { 
+            font-size: 1.5em; 
+            margin-top: 5px; 
+            color: #0A4879; 
+        }
         .container {
             background: #fff;
             padding: 40px;
@@ -31,42 +47,60 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             max-width: 400px;
             width: 100%;
-            margin: 0 auto;
+            margin: 20px auto 0;
             box-sizing: border-box;
+            text-align: left;
+        }
+        .form-group {
+            margin-bottom: 20px;
         }
         label {
             display: block;
             font-weight: 600;
-            margin-bottom: 10px;
-            font-size: 1.2em;
+            margin-bottom: 8px;
+            font-size: 1.1em;
         }
-        #amount-input, #email-input {
+        input[type="email"], input[type="number"], input[type="text"] {
             width: 100%;
             padding: 12px;
-            font-size: 1.2em;
-            border: 1px solid #0A4879;
+            font-size: 1em;
+            border: 1px solid #ccc;
             border-radius: 5px;
-            margin-bottom: 20px;
             box-sizing: border-box;
+            transition: border-color 0.3s;
         }
-        button {
+        input:focus {
+            border-color: #016FD0;
+            outline: none;
+        }
+        .submit-button {
             width: 100%;
-            padding: 14px;
-            font-size: 1.2em;
-            background-color: #016FD0;
+            padding: 15px;
+            background: #016FD0;
             color: #fff;
             border: none;
             border-radius: 5px;
+            font-size: 1.2em;
+            font-weight: 700;
             cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-bottom: 10px;
+            transition: background 0.3s;
         }
-        button:hover { background-color: #0A4879; }
-        #loading-indicator {
+        .submit-button:hover:not(:disabled) {
+            background: #0A4879;
+        }
+        .submit-button:disabled {
+            background: #88BEE8;
+            cursor: not-allowed;
+        }
+        #error-message {
+            color: #D32F2F;
+            background: #FFEBEE;
+            border: 1px solid #D32F2F;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            display: none;
             text-align: center;
-            margin-top: 15px;
-            color: #016FD0;
-            font-weight: 600;
         }
     </style>
 </head>
@@ -77,90 +111,129 @@
             <div class="main-title">Secure Payment</div>
         </div>
     </header>
+    
+    <div class="container">
+        <h2>Enter Payment Details</h2>
+        <form id="payment-form">
+            <div class="form-group">
+                <label for="email">Client Email:</label>
+                <input type="email" id="email" name="email" required placeholder="name@example.com" />
+            </div>
+            
+            <div class="form-group">
+                <label for="amount">Payment Amount (USD):</label>
+                <input type="number" id="amount" name="amount" required step="0.01" min="0.50" placeholder="e.g., 100.00" />
+            </div>
 
-    <div id="mainContent">
-        <div class="container">
-            <label for="amount-input">Amount (USD): $</label>
-            <input type="number" id="amount-input" value="100.00" min="1.00" step="0.01" />
-
-            <label for="email-input">Email:</label>
-            <input type="email" id="email-input" placeholder="your.email@example.com" />
-
-            <button id="payBtn">Pay with Stripe</button>
-            <div id="loading-indicator" style="display:none;">Creating checkout session...</div>
-        </div>
+            <div class="form-group">
+                <label for="invoice_id">Invoice # (Optional):</label>
+                <input type="text" id="invoice_id" name="invoice_id" placeholder="e.g., INV-1001" />
+            </div>
+            
+            <button type="submit" id="submit-button" class="submit-button">Pay Now</button>
+            <div id="error-message"></div>
+        </form>
     </div>
 
     <script>
-        const WORKER_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
+        // --- Configuration ---
         const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
+        // IMPORTANT: REPLACE THIS WITH YOUR ACTUAL WORKER URL
+        const WORKER_ENDPOINT = 'https://YOUR_WORKER_URL/create-checkout-session'; 
         const stripe = Stripe(STRIPE_PUBLIC_KEY);
-
-        // --- DOM Elements ---
-        const amountInput = document.getElementById('amount-input');
-        const emailInput = document.getElementById('email-input');
-        const payBtn = document.getElementById('payBtn'); 
-        const loadingIndicator = document.getElementById('loading-indicator');
         
-        // --- URL Parameter Pre-filling (Unchanged) ---
+        // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const urlAmount = urlParams.get('amount');
-        const urlEmail = urlParams.get('email');
+        
+        // --- Element Selectors ---
+        const paymentForm = document.getElementById('payment-form');
+        const emailInput = document.getElementById('email');
+        const amountInput = document.getElementById('amount');
+        const invoiceIdInput = document.getElementById('invoice_id'); // Selector for the new input field
+        const submitButton = document.getElementById('submit-button');
+        const errorMessageDiv = document.getElementById('error-message');
 
-        if (urlAmount) {
-            amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2);
+        // --- Data Prefill Logic (Updated) ---
+        if (urlParams.has('email')) {
+            emailInput.value = urlParams.get('email');
+            // Removed readOnly to allow users to change prefilled email if needed
         }
-        if (urlEmail) {
-            emailInput.value = urlEmail;
+        
+        if (urlParams.has('amount')) {
+            amountInput.value = urlParams.get('amount');
+            // Removed readOnly
         }
-        // ------------------------------------
 
-        payBtn.onclick = async () => {
-            const amount = parseFloat(amountInput.value);
+        // Prefill Invoice ID
+        if (urlParams.has('invoice_id')) {
+            invoiceIdInput.value = urlParams.get('invoice_id');
+        }
+        
+        // --- Helper Functions ---
+        function showErrorMessage(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.style.display = 'block';
+            submitButton.disabled = false;
+            submitButton.textContent = 'Pay Now';
+        }
+
+        function amountToCents(amountString) {
+            if (!amountString) return 0;
+            const amount = parseFloat(amountString);
+            if (isNaN(amount) || amount <= 0) return 0;
+            return Math.round(amount * 100);
+        }
+        
+        // --- Main Submission Handler ---
+        paymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            errorMessageDiv.style.display = 'none';
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+
             const email = emailInput.value.trim();
-
-            if (!amount || amount <=0 || !email) {
-                alert('Please enter a valid amount and email.');
-                return;
+            const amountInDollars = amountInput.value.trim();
+            const amountInCents = amountToCents(amountInDollars);
+            // Read the invoice ID directly from the visible input field
+            const invoiceId = invoiceIdInput.value.trim(); 
+            
+            if (!email || !amountInCents || amountInCents < 50) {
+                return showErrorMessage('Please enter a valid email and an amount greater than $0.50.');
             }
-
-            payBtn.disabled = true;
-            loadingIndicator.textContent = 'Creating checkout session...';
-            loadingIndicator.style.display = 'block';
 
             try {
-                const amountInCents = Math.round(amount * 100);
-
-                const checkoutRes = await fetch(`${WORKER_URL}/create-checkout-session`, {
+                // 1. Call the Worker to create a Checkout Session
+                const response = await fetch(WORKER_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: amountInCents, email }),
+                    body: JSON.stringify({
+                        email: email,
+                        amount: amountInCents,
+                        invoiceId: invoiceId, // SEND THE INVOICE ID TO THE WORKER
+                    }),
+                });
+                
+                const data = await response.json();
+
+                if (data.error) {
+                    return showErrorMessage(data.error);
+                }
+
+                // 2. Redirect to Stripe Checkout
+                const result = await stripe.redirectToCheckout({
+                    sessionId: data.id,
                 });
 
-                if (!checkoutRes.ok) {
-                    const errorData = await checkoutRes.json();
-                    alert(`Server error creating checkout: ${errorData.error || checkoutRes.status}`);
-                    return;
+                if (result.error) {
+                    return showErrorMessage(result.error.message);
                 }
 
-                const checkoutData = await checkoutRes.json();
-                
-                if (checkoutData.id) {
-                    const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.id });
-                    if (error) {
-                        alert(`Stripe error: ${error.message}`);
-                    }
-                } else {
-                    alert('Failed to create checkout session. Please try again.');
-                }
-                
-            } catch (err) {
-                alert(`Error: ${err.message}`);
-            } finally {
-                payBtn.disabled = false;
-                loadingIndicator.style.display = 'none';
+            } catch (e) {
+                console.error('Submission Error:', e);
+                return showErrorMessage('A network error occurred. Please try again.');
             }
-        };
+        });
     </script>
 </body>
 </html>
