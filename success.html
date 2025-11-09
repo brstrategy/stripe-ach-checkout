@@ -105,12 +105,12 @@
         </div>
     </header>
     
-    <h1 id="mainHeading">Verifying Payment...</h1>
-    <p id="statusMessage">Checking transaction status with Stripe. Please wait.</p>
+    <h1 id="mainHeading">Processing...</h1>
+    <p id="statusMessage">Verifying transaction details.</p>
 
     <div id="dataContainer" class="container" style="display:none;">
         <div class="data-field">
-            <label class="data-label">Amount Authorized:</label>
+            <label class="data-label">Payment Amount:</label>
             <div id="displayAmount" class="data-value">$0.00</div>
         </div>
         <div class="data-field">
@@ -141,56 +141,63 @@
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(dollars);
         }
 
+        // --- Success message for completed Stripe Checkout (Authorization or Payment) ---
         function showPaymentSuccess(amountCents, currency, id) {
-            pageTitle.textContent = 'Payment Authorized';
-            mainHeading.textContent = 'Payment Authorized! ✅';
+            pageTitle.textContent = 'Payment Initiated';
+            mainHeading.textContent = 'Payment Initiated! ✅';
             mainHeading.className = '';
             
-            // Note: Updated to use innerHTML to display the bold tag
-            statusMessage.innerHTML = 'Thank you! Your payment has been successfully initiated. Since this is an ACH payment, the funds will be marked as **cleared** in 3-5 business days.';
+            statusMessage.innerHTML = 'Thank you for initiating your payment. Your transaction reference is below. Please note:<ul><li>**ACH Payment Clearance:** Funds will be marked as **cleared** in 3-5 business days.</li><li>**Account Verification:** If you used manual bank verification (microdeposits), you will receive an email from Stripe with instructions on how to complete the process.</li></ul>';
+            
             homeLink.style.display = 'inline-block';
 
-            document.querySelector('.data-label').textContent = 'Amount Authorized:';
+            document.querySelector('.data-label').textContent = 'Payment Amount:';
             displayAmount.textContent = formatAmount(amountCents, currency);
             displaySessionId.textContent = id;
             dataContainer.style.display = 'block';
         }
 
+        // --- Error message for incomplete Stripe Checkout ---
         function showPaymentError(errorMsg) {
             pageTitle.textContent = 'Payment Error';
             mainHeading.textContent = 'Payment Error 😞';
             mainHeading.className = 'error-h1';
-            statusMessage.textContent = `There was an issue with your transaction. Details: ${errorMsg}. Please try again.`;
+            statusMessage.textContent = `There was an issue processing your transaction: ${errorMsg}. Please try again.`;
             homeLink.style.display = 'inline-block';
         }
 
         // --- Core Logic ---
         if (sessionId) {
+            // Immediately start retrieval without a "Verifying" message visible for long
+            mainHeading.textContent = 'Processing...';
+            statusMessage.textContent = 'Verifying transaction details.';
+
             stripe.retrieveCheckoutSession(sessionId).then(({ session, error }) => {
                 if (error) {
                     showPaymentError(`Verification Error: ${error.message}`);
                     return;
                 }
                 
+                // If the customer successfully completed the flow, show the success state.
                 if (session && session.status === 'complete') {
-                    // Pull the amount and currency from the session's first line item
                     const amountCents = session.amount_total;
                     const currency = session.currency;
-
-                    // Show success based on successful completion of the Checkout process
+                    
                     showPaymentSuccess(amountCents, currency, sessionId);
                     
                 } else if (session && session.status === 'open') {
-                    showPaymentError('Payment is still open. The banking authorization steps were not completed on the Stripe page.');
+                    // Customer was redirected but didn't finish the final step.
+                    showPaymentError('The payment process was not completed on the Stripe page.');
                 } else {
-                    showPaymentError('The payment status could not be verified.');
+                    // General failure or invalid state.
+                    showPaymentError('The payment session could not be verified or is in an invalid state.');
                 }
             }).catch(err => {
                  showPaymentError(`Network Error during verification: ${err.message}`);
             });
             
         } else {
-            // No session ID in the URL is a critical error
+            // No session ID in the URL is a critical error.
             showPaymentError('Invalid access: Missing required session ID.');
         }
     </script>
