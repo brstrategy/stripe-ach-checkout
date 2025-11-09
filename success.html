@@ -36,7 +36,8 @@
             margin-bottom: 15px;
         }
         h1 {
-            color: #4CAF50;
+            color: #4CAF50; /* Green for success */
+            margin-top: 0;
         }
         .error-h1 {
             color: #D32F2F;
@@ -44,20 +45,55 @@
         p {
             font-size: 1.2em;
         }
+        
+        /* --- STYLES ADDED FROM INDEX.HTML FOR BOX LOOK --- */
+        .container {
+            background: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            margin: 20px auto 0; /* Adjusted margin-top */
+            box-sizing: border-box;
+            text-align: left; /* Align text inside container */
+        }
+        .data-field {
+            margin-bottom: 20px;
+        }
+        .data-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1.2em;
+        }
+        .data-value {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.2em;
+            border: 1px solid #0A4879;
+            border-radius: 5px;
+            box-sizing: border-box;
+            background-color: #f7f7f7; /* Light background for the "input" box */
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        /* --- END STYLES ADDED --- */
+
         a {
             display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
+            margin-top: 30px; /* Increased margin */
+            padding: 14px 24px;
             background: #016FD0;
             color: #fff;
             text-decoration: none;
             border-radius: 5px;
+            font-size: 1.2em;
+            font-weight: 600;
         }
         a:hover {
             background: #0A4879;
-        }
-        #statusMessage {
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -71,93 +107,81 @@
     
     <h1 id="mainHeading">Processing Payment...</h1>
     <p id="statusMessage">Please wait while we finalize your transaction.</p>
+
+    <div id="dataContainer" class="container" style="display:none;">
+        <div class="data-field">
+            <label class="data-label">Amount Paid:</label>
+            <div id="displayAmount" class="data-value">$0.00</div>
+        </div>
+        <div class="data-field">
+            <label class="data-label">Transaction ID:</label>
+            <div id="displaySessionId" class="data-value">N/A</div>
+        </div>
+    </div>
     <a id="homeLink" href="index.html" style="display:none;">Make Another Payment</a>
     
     <script>
-        const WORKER_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
         const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
         const stripe = Stripe(STRIPE_PUBLIC_KEY);
 
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session_id');
-        const mode = urlParams.get('mode');
-        const amount = urlParams.get('amount'); // Amount is in cents
+        const amountInCents = urlParams.get('amount');
 
         const mainHeading = document.getElementById('mainHeading');
         const statusMessage = document.getElementById('statusMessage');
         const pageTitle = document.getElementById('pageTitle');
         const homeLink = document.getElementById('homeLink');
+        const dataContainer = document.getElementById('dataContainer');
+        const displayAmount = document.getElementById('displayAmount');
+        const displaySessionId = document.getElementById('displaySessionId');
 
-        // Default Success State (for mode=payment)
-        function showPaymentSuccess() {
-            pageTitle.textContent = 'Payment Successful';
-            mainHeading.textContent = 'Payment Successful! 🎉';
-            mainHeading.className = '';
-            statusMessage.textContent = 'Thank you for your payment.';
-            homeLink.style.display = 'inline-block';
+        function formatAmount(cents) {
+            if (!cents || isNaN(cents)) return '$0.00';
+            const dollars = (parseInt(cents) / 100).toFixed(2);
+            return `$${dollars}`;
         }
 
-        // Error State
+        function showPaymentSuccess(id, cents) {
+            pageTitle.textContent = 'Payment Confirmation';
+            mainHeading.textContent = 'Payment Confirmed! ✅';
+            mainHeading.className = '';
+            statusMessage.textContent = 'Thank you for your successful payment. Details are below:';
+            homeLink.style.display = 'inline-block';
+
+            displayAmount.textContent = formatAmount(cents);
+            displaySessionId.textContent = id;
+            dataContainer.style.display = 'block';
+        }
+
         function showPaymentError(errorMsg) {
             pageTitle.textContent = 'Payment Error';
             mainHeading.textContent = 'Payment Error 😞';
             mainHeading.className = 'error-h1';
-            statusMessage.textContent = `There was an issue processing your payment. Details: ${errorMsg}`;
+            statusMessage.textContent = `There was an issue with your transaction. Details: ${errorMsg}`;
             homeLink.style.display = 'inline-block';
         }
-        
-        // Check for Setup Mode, which requires a follow-up charge
-        if (mode === 'setup' && sessionId) {
-            // Retrieve the Checkout Session data to get the SetupIntent ID
-            stripe.retrieveCheckoutSession(sessionId).then(async ({ session }) => {
-                if (session && session.setup_intent) {
-                    // Retrieve the SetupIntent to get the saved Payment Method ID
-                    stripe.retrieveSetupIntent(session.setup_intent).then(async ({ setupIntent }) => {
-                        if (setupIntent && setupIntent.status === 'succeeded' && setupIntent.payment_method) {
-                            // Found verified Payment Method. Now call Worker to charge it.
-                            const customerId = session.customer;
-                            const paymentMethodId = setupIntent.payment_method;
 
-                            statusMessage.textContent = 'Saved payment method confirmed. Finalizing charge...';
-                            
-                            // Call new Worker endpoint to create and confirm Payment Intent
-                            try {
-                                const chargeRes = await fetch(`${WORKER_URL}/process-saved-payment`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ 
-                                        customerId: customerId,
-                                        paymentMethodId: paymentMethodId,
-                                        amount: parseInt(amount), 
-                                    })
-                                });
-
-                                const chargeData = await chargeRes.json();
-
-                                if (chargeRes.ok && chargeData.status === 'processing') {
-                                    showPaymentSuccess();
-                                } else {
-                                    showPaymentError(`Charge failed: ${chargeData.error || 'Unknown error'}`);
-                                }
-
-                            } catch (err) {
-                                showPaymentError(`Network Error during charge: ${err.message}`);
-                            }
-
-                        } else {
-                            showPaymentError('Payment method setup failed or was not completed.');
-                        }
-                    });
-                } else {
-                    showPaymentError('Payment session data could not be retrieved.');
+        if (sessionId && amountInCents) {
+            stripe.retrieveCheckoutSession(sessionId).then(({ session, error }) => {
+                if (error) {
+                    showPaymentError(`Stripe Error: ${error.message}`);
+                    return;
                 }
+                
+                if (session && session.payment_status === 'paid' && session.status === 'complete') {
+                    showPaymentSuccess(sessionId, amountInCents);
+                } else if (session && session.status === 'open') {
+                    showPaymentError('Payment is still open. Please complete the banking authorization steps.');
+                } else {
+                    showPaymentError('Payment status could not be verified.');
+                }
+            }).catch(err => {
+                 showPaymentError(`Verification failed: ${err.message}`);
             });
-        } else if (sessionId) {
-            // Handles the standard 'mode: payment' success
-            showPaymentSuccess();
+            
         } else {
-            // Handles direct access to success.html without parameters
-            showPaymentError('No session ID found.');
+            showPaymentError('Invalid access: Missing session ID or amount.');
         }
     </script>
 </body>
