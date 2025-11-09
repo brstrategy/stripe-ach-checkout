@@ -36,7 +36,7 @@
             margin-bottom: 15px;
         }
         h1 {
-            color: #4CAF50; /* Green for success */
+            color: #4CAF50;
             margin-top: 0;
         }
         .error-h1 {
@@ -46,7 +46,7 @@
             font-size: 1.2em;
         }
         
-        /* --- STYLES ADDED FROM INDEX.HTML FOR BOX LOOK --- */
+        /* --- STYLES FOR DATA BOX LOOK --- */
         .container {
             background: #fff;
             padding: 40px;
@@ -79,7 +79,7 @@
             white-space: nowrap;
             text-overflow: ellipsis;
         }
-        /* --- END STYLES ADDED --- */
+        /* --- END STYLES --- */
 
         a {
             display: inline-block;
@@ -105,16 +105,16 @@
         </div>
     </header>
     
-    <h1 id="mainHeading">Processing Payment...</h1>
-    <p id="statusMessage">Please wait while we finalize your transaction.</p>
+    <h1 id="mainHeading">Verifying Payment...</h1>
+    <p id="statusMessage">Checking transaction status with Stripe. Please wait.</p>
 
     <div id="dataContainer" class="container" style="display:none;">
         <div class="data-field">
-            <label class="data-label">Amount Paid:</label>
+            <label class="data-label">Amount Authorized:</label>
             <div id="displayAmount" class="data-value">$0.00</div>
         </div>
         <div class="data-field">
-            <label class="data-label">Transaction ID:</label>
+            <label class="data-label">Transaction Reference:</label>
             <div id="displaySessionId" class="data-value">N/A</div>
         </div>
     </div>
@@ -126,7 +126,6 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const sessionId = urlParams.get('session_id');
-        const amountInCents = urlParams.get('amount');
 
         const mainHeading = document.getElementById('mainHeading');
         const statusMessage = document.getElementById('statusMessage');
@@ -136,20 +135,23 @@
         const displayAmount = document.getElementById('displayAmount');
         const displaySessionId = document.getElementById('displaySessionId');
 
-        function formatAmount(cents) {
+        function formatAmount(cents, currency = 'USD') {
             if (!cents || isNaN(cents)) return '$0.00';
             const dollars = (parseInt(cents) / 100).toFixed(2);
-            return `$${dollars}`;
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(dollars);
         }
 
-        function showPaymentSuccess(id, cents, message) {
-            pageTitle.textContent = 'Payment Confirmation';
-            mainHeading.textContent = 'Payment Confirmed! ✅';
+        function showPaymentSuccess(amountCents, currency, id) {
+            pageTitle.textContent = 'Payment Authorized';
+            mainHeading.textContent = 'Payment Authorized! ✅';
             mainHeading.className = '';
-            statusMessage.textContent = message;
+            
+            // Note: Updated to use innerHTML to display the bold tag
+            statusMessage.innerHTML = 'Thank you! Your payment has been successfully initiated. Since this is an ACH payment, the funds will be marked as **cleared** in 3-5 business days.';
             homeLink.style.display = 'inline-block';
 
-            displayAmount.textContent = formatAmount(cents);
+            document.querySelector('.data-label').textContent = 'Amount Authorized:';
+            displayAmount.textContent = formatAmount(amountCents, currency);
             displaySessionId.textContent = id;
             dataContainer.style.display = 'block';
         }
@@ -158,39 +160,38 @@
             pageTitle.textContent = 'Payment Error';
             mainHeading.textContent = 'Payment Error 😞';
             mainHeading.className = 'error-h1';
-            statusMessage.textContent = `There was an issue with your transaction. Details: ${errorMsg}`;
+            statusMessage.textContent = `There was an issue with your transaction. Details: ${errorMsg}. Please try again.`;
             homeLink.style.display = 'inline-block';
         }
 
         // --- Core Logic ---
-        if (sessionId && amountInCents) {
+        if (sessionId) {
             stripe.retrieveCheckoutSession(sessionId).then(({ session, error }) => {
                 if (error) {
-                    showPaymentError(`Stripe Error: ${error.message}`);
+                    showPaymentError(`Verification Error: ${error.message}`);
                     return;
                 }
                 
                 if (session && session.status === 'complete') {
-                    if (session.payment_status === 'paid') {
-                        // Crucial message for ACH payments, which clear asynchronously
-                        const message = 'Thank you! Your payment has been successfully initiated. Since this is an ACH payment, it will be marked as **cleared** in 3-5 business days.';
-                        showPaymentSuccess(sessionId, amountInCents, message);
-                    } else if (session.payment_status === 'unpaid') {
-                        showPaymentError('The payment process was completed, but the payment itself is currently **unpaid** or failed.');
-                    } else {
-                        showPaymentError(`Payment status: ${session.payment_status} - Verification failed.`);
-                    }
+                    // Pull the amount and currency from the session's first line item
+                    const amountCents = session.amount_total;
+                    const currency = session.currency;
+
+                    // Show success based on successful completion of the Checkout process
+                    showPaymentSuccess(amountCents, currency, sessionId);
+                    
                 } else if (session && session.status === 'open') {
-                    showPaymentError('Payment is still open. Please complete the banking authorization steps on the Stripe page.');
+                    showPaymentError('Payment is still open. The banking authorization steps were not completed on the Stripe page.');
                 } else {
-                    showPaymentError('Payment session data could not be verified or is incomplete.');
+                    showPaymentError('The payment status could not be verified.');
                 }
             }).catch(err => {
-                 showPaymentError(`Verification failed: ${err.message}`);
+                 showPaymentError(`Network Error during verification: ${err.message}`);
             });
             
         } else {
-            showPaymentError('Invalid access: Missing session ID or amount.');
+            // No session ID in the URL is a critical error
+            showPaymentError('Invalid access: Missing required session ID.');
         }
     </script>
 </body>
