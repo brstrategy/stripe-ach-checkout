@@ -35,11 +35,11 @@
             margin-bottom: 15px;
         }
         
-        /* FIX: Match the style of index.html's title */
+        /* Match the style of index.html's title */
         .main-title { 
             font-size: 1.5em; 
             margin-top: 5px; 
-            color: #0A4879; /* COLOR MATCHED */
+            color: #0A4879; 
         }
         h1 {
             color: #4CAF50; /* Green for success */
@@ -58,16 +58,16 @@
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 450px; /* Slightly wider to accommodate full ID */
+            max-width: 450px; 
             width: 100%;
-            margin: 20px auto 0;
+            margin: 20px auto 40px; /* Increased bottom margin */
             box-sizing: border-box;
             text-align: left;
         }
         
         /* --- DATA DISPLAY STYLES (NO BOXES, JUST TEXT) --- */
         .data-field {
-            margin-bottom: 30px; /* Increased space */
+            margin-bottom: 30px; 
             border-bottom: 1px solid #eee;
             padding-bottom: 15px;
         }
@@ -79,10 +79,10 @@
             color: #555;
         }
         .data-value {
-            font-size: 1.8em; /* BIG BOLD TEXT */
+            font-size: 1.8em; 
             font-weight: 700;
             color: #016FD0;
-            word-break: break-all; /* Ensure long ID wraps */
+            word-break: break-all; 
             white-space: normal;
         }
 
@@ -101,31 +101,20 @@
             position: relative;
         }
         .explanation-list li::before {
-            content: '🔹'; /* Custom bullet point */
+            content: '🔹'; 
             position: absolute;
             left: 0;
             top: 0;
             font-size: 1.2em;
             color: #016FD0;
         }
+        /* Ensure all text meant to be bold inside the list is styled correctly */
         .explanation-list strong {
-            font-weight: 700; /* Ensure strong is visible */
+            font-weight: 700;
+            color: #333; /* Make sure it stands out */
         }
 
-        a {
-            display: inline-block;
-            margin-top: 30px;
-            padding: 14px 24px;
-            background: #016FD0;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 1.2em;
-            font-weight: 600;
-        }
-        a:hover {
-            background: #0A4879;
-        }
+        /* --- REMOVED A-TAG STYLES --- */
     </style>
 </head>
 <body>
@@ -159,8 +148,6 @@
             </li>
         </ul>
     </div>
-    <a href="index.html">Make Another Payment</a>
-    
     <script>
         // --- Minimal Script to populate Amount/ID from URL ---
         const urlParams = new URLSearchParams(window.location.search);
