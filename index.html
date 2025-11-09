@@ -1,75 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Dorothy Cole - Payment</title>
-    <script src="https://js.stripe.com/v3/"></script>
-    <style>
-        /* Your existing styles */
-        body {
-            background: #FFFFFF;
-            color: #333;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: start;
-            min-height: 100vh;
-            margin: 0;
-            padding: 40px 20px;
-        }
-        header { width: 100%; text-align: center; margin-bottom: 30px; }
-        .logo-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
-        .logo-img { max-width: 300px; width: 100%; height: auto; display: block; margin-bottom: 15px; }
-        h1 { font-size: 2.5em; margin: 0; color: #0A4879; }
-        .main-title { font-size: 1.5em; margin-top: 5px; color: #0A4879; }
-        .container {
-            background: #fff;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 400px;
-            width: 100%;
-            margin: 0 auto;
-            box-sizing: border-box;
-        }
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 10px;
-            font-size: 1.2em;
-        }
-        #amount-input, #email-input {
-            width: 100%;
-            padding: 12px;
-            font-size: 1.2em;
-            border: 1px solid #0A4879;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            font-size: 1.2em;
-            background-color: #016FD0;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-bottom: 10px;
-        }
-        button:hover { background-color: #0A4879; }
-        #loading-indicator {
-            text-align: center;
-            margin-top: 15px;
-            color: #016FD0;
-            font-weight: 600;
-        }
-    </style>
-</head>
 <body>
     <header>
         <div class="logo-container">
@@ -86,106 +14,86 @@
             <label for="email-input">Email:</label>
             <input type="email" id="email-input" placeholder="your.email@example.com" />
 
-            <button id="nextBtn">Next: Check Payment Options</button>
-            <div id="loading-indicator" style="display:none;">Checking for saved accounts...</div>
+            <button id="payBtn">Pay with Stripe</button>
+            <div id="loading-indicator" style="display:none;">Creating checkout session...</div>
         </div>
     </div>
 
     <script>
-      const WORKER_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
-      const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
-      const stripe = Stripe(STRIPE_PUBLIC_KEY);
+        const WORKER_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
+        const STRIPE_PUBLIC_KEY = 'pk_test_51RqI7CAtDFEhM4UVdqmZtq6zADc1RWJNZMQEslgTR0rJMze1MO6VTof0OOAtlwEQ9vwpZBIyEHaqLKAhmJAl6g9I00SbS1Vhts';
+        const stripe = Stripe(STRIPE_PUBLIC_KEY);
 
-      // --- DOM Elements ---
-      const amountInput = document.getElementById('amount-input');
-      const emailInput = document.getElementById('email-input');
-      const nextBtn = document.getElementById('nextBtn');
-      const loadingIndicator = document.getElementById('loading-indicator');
+        // --- DOM Elements ---
+        const amountInput = document.getElementById('amount-input');
+        const emailInput = document.getElementById('email-input');
+        // NOTE: CHANGED FROM nextBtn TO payBtn
+        const payBtn = document.getElementById('payBtn'); 
+        const loadingIndicator = document.getElementById('loading-indicator');
         
-      // --- URL Parameter Pre-filling ---
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlAmount = urlParams.get('amount');
-      const urlEmail = urlParams.get('email');
+        // --- URL Parameter Pre-filling (Unchanged) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlAmount = urlParams.get('amount');
+        const urlEmail = urlParams.get('email');
 
-      if (urlAmount) {
-        // Note: We expect the URL amount to be in cents, so we convert it back to dollars for display
-        amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2);
-      }
-      if (urlEmail) {
-        emailInput.value = urlEmail;
-      }
-      // ------------------------------------
-
-      nextBtn.onclick = async () => {
-        const amount = parseFloat(amountInput.value);
-        const email = emailInput.value.trim();
-
-        if (!amount || amount <=0 || !email) {
-          alert('Please enter a valid amount and email.');
-          return;
+        if (urlAmount) {
+            amountInput.value = (parseFloat(urlAmount) / 100).toFixed(2);
         }
+        if (urlEmail) {
+            emailInput.value = urlEmail;
+        }
+        // ------------------------------------
 
-        nextBtn.disabled = true;
-        loadingIndicator.style.display = 'block';
+        // ATTACH LISTENER TO payBtn
+        payBtn.onclick = async () => {
+            const amount = parseFloat(amountInput.value);
+            const email = emailInput.value.trim();
 
-        try {
-          const amountInCents = Math.round(amount * 100);
-
-          // 1. CALL NEW WORKER ENDPOINT TO CHECK FOR SAVED METHODS
-          const res = await fetch(`${WORKER_URL}/check-saved-methods`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, amount: amountInCents }),
-          });
-
-          if (!res.ok) {
-            const errorData = await res.json();
-            alert(`Server error during check: ${errorData.error || res.status}`);
-            return;
-          }
-
-          const data = await res.json();
-
-          if (data.status === 'SAVED_FOUND') {
-            // 2. ROUTE TO CUSTOM PAYMENT SELECTION PAGE
-            const redirectUrl = `payment_selection.html?customerId=${data.customerId}&amount=${amountInCents}&email=${encodeURIComponent(email)}`;
-            window.location.href = redirectUrl;
-
-          } else if (data.status === 'NEW_CUSTOMER' || data.status === 'NO_SAVED') {
-            // 3. ROUTE TO STRIPE CHECKOUT FOR NEW SETUP
-            // We call the old endpoint, which will create the session and return the ID.
-            const checkoutRes = await fetch(`${WORKER_URL}/create-checkout-session`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ amount: amountInCents, email }),
-            });
-
-            if (!checkoutRes.ok) {
-              const errorData = await checkoutRes.json();
-              alert(`Server error creating checkout: ${errorData.error || checkoutRes.status}`);
-              return;
+            if (!amount || amount <=0 || !email) {
+                alert('Please enter a valid amount and email.');
+                return;
             }
 
-            const checkoutData = await checkoutRes.json();
-            
-            if (checkoutData.id) {
-              const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.id });
-              if (error) {
-                alert(`Stripe error: ${error.message}`);
-              }
-            } else {
-              alert('Failed to create checkout session. Please try again.');
+            payBtn.disabled = true;
+            // CHANGED loading text
+            loadingIndicator.textContent = 'Creating checkout session...';
+            loadingIndicator.style.display = 'block';
+
+            try {
+                const amountInCents = Math.round(amount * 100);
+
+                // *** MINIMAL CHANGE: Directly call the create-checkout-session endpoint ***
+                const checkoutRes = await fetch(`${WORKER_URL}/create-checkout-session`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: amountInCents, email }),
+                });
+
+                if (!checkoutRes.ok) {
+                    const errorData = await checkoutRes.json();
+                    alert(`Server error creating checkout: ${errorData.error || checkoutRes.status}`);
+                    return;
+                }
+
+                const checkoutData = await checkoutRes.json();
+                
+                if (checkoutData.id) {
+                    // Redirect to Stripe Checkout. Link handles re-use internally.
+                    const { error } = await stripe.redirectToCheckout({ sessionId: checkoutData.id });
+                    if (error) {
+                        alert(`Stripe error: ${error.message}`);
+                    }
+                } else {
+                    alert('Failed to create checkout session. Please try again.');
+                }
+                
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            } finally {
+                payBtn.disabled = false;
+                loadingIndicator.style.display = 'none';
             }
-          } else {
-            alert('Unknown response from server.');
-          }
-        } catch (err) {
-          alert(`Error: ${err.message}`);
-        } finally {
-          nextBtn.disabled = false;
-          loadingIndicator.style.display = 'none';
-        }
-      };
+        };
     </script>
 </body>
 </html>
