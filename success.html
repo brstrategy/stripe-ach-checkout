@@ -17,10 +17,10 @@
             padding: 40px 20px;
             text-align: center;
         }
-        header {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 30px;
+        header { 
+            width: 100%; 
+            text-align: center; 
+            margin-bottom: 30px; 
         }
         .logo-container {
             display: flex;
@@ -34,6 +34,13 @@
             display: block;
             margin-bottom: 15px;
         }
+        
+        /* FIX: Match the style of index.html's title */
+        .main-title { 
+            font-size: 1.5em; 
+            margin-top: 5px; 
+            color: #0A4879; /* COLOR MATCHED */
+        }
         h1 {
             color: #4CAF50; /* Green for success */
             margin-top: 0;
@@ -44,60 +51,66 @@
             max-width: 500px;
             margin: 10px auto;
         }
-        ul {
-            text-align: left;
-            max-width: 500px;
-            margin: 20px auto 30px;
-            padding-left: 20px;
-            list-style-type: none; /* Remove default bullets */
-        }
-        li {
-            margin-bottom: 15px;
-            line-height: 1.4;
-            padding-left: 25px; /* Space for custom bullet */
-            position: relative;
-        }
-        li::before {
-            content: '👉'; /* Custom bullet point */
-            position: absolute;
-            left: 0;
-            top: 0;
-        }
         
-        /* --- STYLES FOR DATA BOX LOOK --- */
+        /* --- MAIN CONTAINER (Box) --- */
         .container {
             background: #fff;
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 400px;
+            max-width: 450px; /* Slightly wider to accommodate full ID */
             width: 100%;
             margin: 20px auto 0;
             box-sizing: border-box;
             text-align: left;
         }
+        
+        /* --- DATA DISPLAY STYLES (NO BOXES, JUST TEXT) --- */
         .data-field {
-            margin-bottom: 20px;
+            margin-bottom: 30px; /* Increased space */
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
         }
         .data-label {
             display: block;
             font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 1.2em;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+            color: #555;
         }
         .data-value {
-            width: 100%;
-            padding: 12px;
-            font-size: 1.2em;
-            border: 1px solid #0A4879;
-            border-radius: 5px;
-            box-sizing: border-box;
-            background-color: #f7f7f7;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+            font-size: 1.8em; /* BIG BOLD TEXT */
+            font-weight: 700;
+            color: #016FD0;
+            word-break: break-all; /* Ensure long ID wraps */
+            white-space: normal;
         }
-        /* --- END STYLES --- */
+
+        /* --- EXPLANATION LIST STYLES --- */
+        .explanation-list {
+            margin-top: 25px;
+            padding: 0;
+            list-style-type: none; 
+            border-top: 1px solid #eee;
+            padding-top: 25px;
+        }
+        .explanation-list li {
+            margin-bottom: 15px;
+            line-height: 1.4;
+            padding-left: 25px;
+            position: relative;
+        }
+        .explanation-list li::before {
+            content: '🔹'; /* Custom bullet point */
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 1.2em;
+            color: #016FD0;
+        }
+        .explanation-list strong {
+            font-weight: 700; /* Ensure strong is visible */
+        }
 
         a {
             display: inline-block;
@@ -124,26 +137,27 @@
     </header>
     
     <h1 id="mainHeading">Payment Initiated! ✅</h1>
-    <p>Thank you for initiating your payment. Please keep the following in mind:</p>
 
-    <ul>
-        <li>
-            **ACH Payment Clearance:** Since this is an ACH transaction, the funds will typically be marked as **cleared** in **3 to 5 business days**. Your account will be debited during this time.
-        </li>
-        <li>
-            **Account Verification (Microdeposits):** If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an **email from Stripe** with instructions on how to complete the microdeposit verification process.
-        </li>
-    </ul>
-
-    <div id="dataContainer" class="container">
+    <div class="container">
+        
         <div class="data-field">
             <label class="data-label">Payment Amount:</label>
             <div id="displayAmount" class="data-value">$0.00</div>
         </div>
+        
         <div class="data-field">
-            <label class="data-label">Transaction Reference (Session ID):</label>
+            <label class="data-label">Stripe Transaction Reference (Session ID):</label>
             <div id="displaySessionId" class="data-value">N/A</div>
         </div>
+
+        <ul class="explanation-list">
+            <li>
+                <strong>ACH Payment Clearance:</strong> Since this is an ACH transaction, the funds will typically be marked as **cleared** in **3 to 5 business days**. Your account will be debited during this time.
+            </li>
+            <li>
+                <strong>Account Verification (Microdeposits):</strong> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an **email from Stripe** with instructions on how to complete the microdeposit verification process.
+            </li>
+        </ul>
     </div>
     <a href="index.html">Make Another Payment</a>
     
@@ -158,7 +172,6 @@
 
         function formatAmount(cents) {
             if (!cents || isNaN(cents)) return '$0.00';
-            // Assuming USD and that 'amount' URL param is in cents (which it is from the Worker)
             const dollars = (parseInt(cents) / 100).toFixed(2);
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(dollars);
         }
