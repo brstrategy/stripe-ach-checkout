@@ -1,5 +1,5 @@
 // --- GLOBAL CONFIGURATION ---
-const CLIENT_DOMAIN = 'https://stripe-ach-checkout.pages.dev';
+const CLIENT_DOMAIN = 'https://pay-dorothy-cole.pages.dev';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': CLIENT_DOMAIN,
@@ -37,6 +37,7 @@ export default {
 
         } catch (e) {
             console.error('Error in fetch handler:', e);
+            // General catch-all error response
             return new Response(
                 JSON.stringify({ error: e.message }),
                 { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -46,11 +47,12 @@ export default {
 };
 
 // =================================================================
-// === HANDLER: DUPLICATE CHECK ====================================
+// === HANDLER: DUPLICATE CHECK (CORRECTED LOGIC) ==================
 // =================================================================
 
 /**
  * Checks Stripe for existing Payment Intents associated with the invoice ID.
+ * Uses simple metadata search and filters by status in JavaScript to avoid Stripe query syntax errors.
  */
 async function handleCheckDuplicateInvoice(request, env) {
     const { invoiceId } = await request.json();
@@ -59,8 +61,9 @@ async function handleCheckDuplicateInvoice(request, env) {
         return new Response(JSON.stringify({ error: 'Invoice ID is required for check.' }), { status: 400, headers: corsHeaders });
     }
 
-    // Query for Payment Intents with matching metadata and status 'succeeded' or 'processing'
-    const query = `metadata["invoice_number"]:"${encodeURIComponent(invoiceId)}" AND (status:"succeeded" OR status:"processing")`;
+    // SIMPLIFIED QUERY: Only search for the Invoice ID in metadata. 
+    // This avoids the confusing AND/OR mix that caused the previous error.
+    const query = `metadata["invoice_number"]:"${encodeURIComponent(invoiceId)}"`;
 
     const searchRes = await fetch(`https://api.stripe.com/v1/payment_intents/search?query=${query}`, {
         headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
@@ -68,13 +71,20 @@ async function handleCheckDuplicateInvoice(request, env) {
     const searchData = await searchRes.json();
 
     if (searchRes.ok && searchData.data) {
-        const isDuplicate = searchData.data.length > 0;
+        // Filter the results in JavaScript for the required statuses: succeeded or processing.
+        const duplicatePayments = searchData.data.filter(pi => 
+            pi.status === 'succeeded' || pi.status === 'processing'
+        );
+        
+        const isDuplicate = duplicatePayments.length > 0;
+        
         return new Response(
             JSON.stringify({ isDuplicate: isDuplicate }),
             { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
     } else {
         console.error('Stripe search error:', searchData);
+        // Returns generic failure message as requested by client-side error handling
         return new Response(
             JSON.stringify({ error: 'Failed to perform duplicate check.' }),
             { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -87,7 +97,7 @@ async function handleCheckDuplicateInvoice(request, env) {
 // =================================================================
 
 /**
- * HANDLES CREATING A NEW CHECKOUT SESSION 
+ * HANDLES CREATING A NEW STRIPE CHECKOUT SESSION 
  */
 async function handleCreateCheckoutSession(request, env) {
     const { amount, email, invoiceId } = await request.json();
@@ -104,8 +114,10 @@ async function handleCreateCheckoutSession(request, env) {
     const searchData = await searchRes.json();
     
     if (searchData.data && searchData.data.length > 0) {
+        // Customer found, use existing ID
         customerId = searchData.data[0].id;
     } else {
+        // Customer not found, create a new one
         const createRes = await fetch('https://api.stripe.com/v1/customers', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -125,14 +137,13 @@ async function handleCreateCheckoutSession(request, env) {
         customer: customerId,
         client_reference_id: customerId,
         
-        // Ensure name is collected if missing
+        // Ensures name is collected if missing
         'customer_update[name]': 'auto', 
         
         // Attach the Invoice ID as metadata on the Payment Intent
-        'payment_intent_data[metadata][invoice_number]': invoiceId || '', 
+        'payment_intent_data[metadata][invoice_number]': invoiceId, 
         
-        // Fix: Removed setup_future_usage to stop duplicate PM creation
-        
+        // ACH payments require success/cancel URLs for redirects
         success_url: `${CLIENT_DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}&mode=${mode}&amount=${amount}`, 
         cancel_url: `${CLIENT_DOMAIN}/cancel.html`,
     };
