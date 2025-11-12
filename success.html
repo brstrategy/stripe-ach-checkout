@@ -50,7 +50,7 @@
             font-size: 0.9em;
             color: #016FD0;
             text-decoration: none;
-            margin-bottom: 30px; /* Space below the link */
+            margin-bottom: 30px; 
             display: inline-block;
         }
         .print-link:hover {
@@ -58,8 +58,9 @@
         }
 
         /* Main Content Styles */
-        h1 {
-            color: #4CAF50; /* Green for success */
+        /* Fixed style for the unified heading */
+        #mainHeading { 
+            color: #FF9800; /* Amber/Orange for general initiation */
             margin-top: 0;
             font-size: 2.5em;
         }
@@ -70,7 +71,7 @@
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 550px; /* INCREASED WIDTH for better email/data fit */
+            max-width: 550px; 
             width: 100%;
             margin: 20px auto 20px; 
             box-sizing: border-box; 
@@ -81,7 +82,6 @@
         .data-field {
             display: flex;
             justify-content: space-between;
-            /* ALIGNMENT FIX: Use 'center' or 'flex-start' but ensure Total is good */
             align-items: center; 
             padding: 10px 0;
             border-bottom: 1px solid #eee;
@@ -96,7 +96,6 @@
             font-weight: 600;
             color: #555;
             flex-grow: 1;
-            /* Max-width adjusted to give more room to the value, especially email */
             max-width: 60%; 
             padding-right: 10px;
             word-break: normal;
@@ -106,15 +105,14 @@
             color: #016FD0;
             text-align: right;
             max-width: 40%;
-            word-break: break-word; /* Allow long emails/IDs to wrap if necessary */
+            word-break: break-word; 
         }
 
         /* Highlight the Payment Amount for emphasis */
         #displayAmount {
             font-size: 1.5em;
-            color: #4CAF50; /* Green for the final amount */
+            color: #4CAF50; 
             font-weight: 900;
-            /* FIX: Ensure amount value aligns nicely */
             line-height: 1; 
         }
         
@@ -155,9 +153,9 @@
             color: #016FD0;
         }
 
-        /* --- BOX 2: DISCLOSURE NOTE --- */
+        /* --- BOX 2: DISCLOSURE NOTE (Always visible) --- */
         .disclaimer-note {
-            max-width: 550px; /* Increased width to match details box */
+            max-width: 550px; 
             width: 100%;
             margin: 0 auto 40px;
             padding: 20px;
@@ -181,12 +179,10 @@
         
         /* --- Print Styles (Customized) --- */
         @media print {
-            /* Keep Logo and Header, but hide the print button and main note/disclaimer block */
-            .print-link, .disclaimer-note-block {
+            .print-link {
                 display: none !important;
             }
             
-            /* Ensure all colors and images print */
             body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
@@ -195,15 +191,19 @@
                 margin: 0 !important;
             }
             
-            /* Remove shadows, adjust layout for a clean page */
             .details-box {
                 box-shadow: none !important; 
-                border: 1px solid #ccc; /* Add a subtle border for the receipt box */
+                border: 1px solid #ccc; 
                 max-width: 100% !important;
                 margin: 20px 50px !important;
             }
             
-            /* Reset font size/alignment for a professional printout */
+            .disclaimer-note {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                margin: 20px 50px !important;
+            }
+
             body, .data-label, .data-value, #displayAmount {
                 font-size: 11pt !important;
             }
@@ -230,12 +230,12 @@
         </a>
     </header>
     
-    <h1 id="mainHeading"></h1>
+    <h1 id="mainHeading">Payment Initiated! ⏳</h1>
 
     <div class="details-box">
         
         <div style="text-align: center; margin-bottom: 20px;">
-            <h2 id="confirmationTitle">Payment Confirmation Details</h2>
+            <h2 id="confirmationTitle">Payment Initiation Details</h2> 
             <p style="font-size: 1em; color: #777;">Thank you for your payment.</p>
         </div>
 
@@ -283,14 +283,12 @@
         </div>
     </div>
     
-    <div class="disclaimer-note-block">
-        <div class="disclaimer-note" id="disclaimerNote">
-            <span class="header-block">Client Cost:</span> As a reminder, this payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
-            
-            <span class="header-block">Payment Clearance:</span> Since this is an ACH transaction, the funds will typically be marked as <strong>cleared</strong> in <strong>3 to 5 business days</strong>. Your account will be debited during this time.
-            
-            <span class="header-block">Account Verification:</span> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an <strong>email from Stripe</strong> with instructions on how to complete the microdeposit verification process.
-        </div>
+    <div class="disclaimer-note" id="disclaimerNote">
+        <span class="header-block">Client Cost:</span> As a reminder, this payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
+        
+        <span class="header-block">Payment Clearance:</span> Since this is an ACH transaction, the funds will typically be marked as <strong>cleared</strong> in <strong>3 to 5 business days</strong>. Your account will be debited during this time.
+        
+        <span class="header-block">Account Verification:</span> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an <strong>email from Stripe</strong> with instructions on how to complete the microdeposit verification process.
     </div>
     
     <script>
@@ -305,11 +303,6 @@
         const invoiceId = urlParams.get('invoice_id');
         
         // --- HTML Elements ---
-        const mainHeading = document.getElementById('mainHeading');
-        const confirmationTitle = document.getElementById('confirmationTitle');
-        const disclaimerNote = document.getElementById('disclaimerNote');
-        const disclaimerNoteBlock = document.querySelector('.disclaimer-note-block');
-
         const displayAmount = document.getElementById('displayAmount');
         const displayInvoiceId = document.getElementById('displayInvoiceId');
         const displaySessionId = document.getElementById('displaySessionId');
@@ -337,33 +330,12 @@
             });
         }
         
-        // --- Wording Logic ---
-        function updateWording(method) {
-            if (method.includes('Bank Account') || method.includes('Pending')) {
-                // ACH Wording (Initiated/Pending)
-                mainHeading.textContent = 'Payment Initiated! ⏳';
-                mainHeading.style.color = '#FF9800'; // Orange/Amber
-                confirmationTitle.textContent = 'Payment Initiation Details';
-                disclaimerNoteBlock.style.display = 'block'; // Show the ACH notes
-            } else {
-                // Card/Cleared Payment Wording
-                mainHeading.textContent = 'Payment Complete! ✅';
-                mainHeading.style.color = '#4CAF50'; // Green
-                confirmationTitle.textContent = 'Payment Confirmation Details';
-                // Remove the ACH-specific notes (or clear the content)
-                disclaimerNoteBlock.style.display = 'none'; 
-            }
-        }
-
         async function fetchAndDisplayReceiptDetails() {
             // Populate URL-based fields immediately
             displayAmount.textContent = formatAmount(amountInCents);
             displayInvoiceId.textContent = invoiceId || 'N/A';
             displaySessionId.textContent = sessionId || 'N/A';
             
-            // Set default wording before fetching data (assumes ACH pending)
-            updateWording("US Bank Account (Pending)"); 
-
             if (!sessionId) {
                 return; 
             }
@@ -397,9 +369,6 @@
                 }
                 displayPaymentMethod.textContent = paymentMethodText;
                 
-                // FINAL STEP: Update wording based on the fetched method
-                updateWording(paymentMethodText);
-
             } catch (e) {
                 console.error('Network or Parse Error:', e);
                 displayName.textContent = 'Network Error.';
