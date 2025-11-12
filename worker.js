@@ -1,5 +1,6 @@
 // --- GLOBAL CONFIGURATION ---
 const CLIENT_DOMAIN = 'https://pay-dorothy-cole.pages.dev';
+const EXPIRATION_IN_MINUTES = 10; // Session will automatically expire after 10 minutes if not paid.
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': CLIENT_DOMAIN,
@@ -58,12 +59,12 @@ export default {
 };
 
 // =================================================================
-// === HANDLER: DUPLICATE CHECK ====================================
+// === HANDLER: DUPLICATE CHECK (FINAL) ============================
 // =================================================================
 
 /**
  * Checks Stripe for existing Payment Intents associated with the invoice ID.
- * Filters results by status ('succeeded' or 'processing') in JavaScript.
+ * Filters results by status that indicates a payment is successful, processing, or pending action.
  */
 async function handleCheckDuplicateInvoice(request, env) {
     const { invoiceId } = await request.json();
@@ -73,7 +74,6 @@ async function handleCheckDuplicateInvoice(request, env) {
     }
 
     // Simplified query: Search for the Invoice ID in metadata
-    // NOTE: stripe.com/v1/payment_intents/search uses URL encoding rules for the query string.
     const query = `metadata["invoice_number"]:"${encodeURIComponent(invoiceId)}"`;
 
     const searchRes = await fetch(`https://api.stripe.com/v1/payment_intents/search?query=${query}`, {
@@ -82,10 +82,14 @@ async function handleCheckDuplicateInvoice(request, env) {
     const searchData = await searchRes.json();
 
     if (searchRes.ok && searchData.data) {
-        // Filter the results in JavaScript for the required statuses
+        // --- FIXED FILTER LOGIC: Includes all statuses for active/pending/successful payments ---
         const duplicatePayments = searchData.data.filter(pi => 
-            pi.status === 'succeeded' || pi.status === 'processing'
+            pi.status === 'succeeded' || 
+            pi.status === 'processing' ||
+            pi.status === 'requires_action' ||
+            pi.status === 'requires_confirmation' 
         );
+        // --------------------------
         
         const isDuplicate = duplicatePayments.length > 0;
         
@@ -142,6 +146,10 @@ async function handleCreateCheckoutSession(request, env) {
 
     let mode = 'payment';
     
+    // ⭐ FIX: Calculate Expiration Timestamp for abandoned session cleanup ⭐
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    const expires_at = nowInSeconds + (EXPIRATION_IN_MINUTES * 60);
+
     // 2. BUILD SESSION PARAMS
     const params = {
         // Stripe payment methods are configured to prioritize us_bank_account, link, then card
@@ -151,6 +159,9 @@ async function handleCreateCheckoutSession(request, env) {
         mode: mode,
         customer: customerId,
         client_reference_id: customerId,
+        
+        // Add the expires_at parameter
+        expires_at: expires_at.toString(), 
         
         // Ensures name is collected if missing
         'customer_update[name]': 'auto',

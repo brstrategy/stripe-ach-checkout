@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Payment Initiated</title>
+    <title>Payment Receipt</title>
     <link rel="icon" type="image/png" href="/images/favicon.png"> 
     <style>
         /* Base styles */
@@ -50,13 +50,8 @@
             margin-top: 0;
             font-size: 2.5em;
         }
-        p {
-            font-size: 1.2em;
-            max-width: 500px;
-            margin: 10px auto;
-        }
         
-        /* --- BOX 1: MAIN DETAILS CONTAINER (Reference for width) --- */
+        /* --- BOX 1: MAIN DETAILS CONTAINER (Receipt Box) --- */
         .details-box {
             background: #fff;
             padding: 40px;
@@ -69,34 +64,79 @@
             text-align: left;
         }
         
-        /* --- DATA DISPLAY STYLES --- */
+        /* --- DATA DISPLAY STYLES (Single line, aligned) --- */
         .data-field {
-            margin-bottom: 30px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px 0;
             border-bottom: 1px solid #eee;
-            padding-bottom: 15px;
+            font-size: 1.1em;
+            word-break: break-word; /* Allow long text to wrap */
         }
-        .details-box .data-field:last-child {
-            margin-bottom: 0;
+        .details-box .data-field:last-of-type {
             border-bottom: none;
             padding-bottom: 0;
         }
 
         .data-label {
-            display: block;
             font-weight: 600;
-            margin-bottom: 5px;
-            font-size: 1.1em;
             color: #555;
+            flex-grow: 1;
+            max-width: 50%;
         }
         .data-value {
-            font-size: 1.8em; 
             font-weight: 700;
             color: #016FD0;
-            word-break: break-all; 
-            white-space: normal;
+            text-align: right;
+            max-width: 50%;
         }
 
-        /* --- BOX 2: DISCLOSURE NOTE (The fix is here) --- */
+        /* Highlight the Payment Amount for emphasis */
+        #displayAmount {
+            font-size: 1.5em;
+            color: #4CAF50; /* Green for the final amount */
+            font-weight: 900;
+        }
+        
+        /* --- TOOLTIP STYLES --- */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            line-height: 1; /* Keep the icon aligned with text baseline */
+        }
+        .tooltip-container .tooltip-text {
+            visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 4px;
+            padding: 8px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; 
+            left: 50%;
+            margin-left: -125px; 
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.9em;
+            line-height: 1.4;
+            pointer-events: none; /* Prevents text from blocking clicks/hover */
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .info-icon {
+            margin-left: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #016FD0;
+        }
+
+        /* --- BOX 2: DISCLOSURE NOTE --- */
         .disclaimer-note {
             max-width: 400px; 
             width: 100%;
@@ -106,14 +146,12 @@
             border: 1px solid #e0e6ed; 
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+            box-sizing: border-box; 
             text-align: left;
             font-size: 0.9em;
             line-height: 1.5;
             color: #4a5568;
-            /* 🔥 FIX: Added box-sizing to ensure padding is contained within the 100% width. */
-            box-sizing: border-box; 
         }
-
         .disclaimer-note .header-block {
             color: #0A4879;
             display: block;
@@ -121,35 +159,102 @@
             margin-bottom: 2px;
             font-weight: 700;
         }
+
+        /* --- Print Button & Print Styles --- */
+        .print-button {
+            margin-top: 30px;
+            padding: 10px 20px;
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: #0A4879;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        @media print {
+            header, .disclaimer-note, .print-button {
+                display: none !important;
+            }
+            body {
+                padding: 20px !important;
+                justify-content: center;
+            }
+            .details-box {
+                box-shadow: none !important; 
+                border: 1px solid #ccc;
+            }
+            /* Reset font size for receipt clarity when printing */
+            .data-value {
+                font-size: 1.1em !important;
+            }
+            #displayAmount {
+                font-size: 1.5em !important;
+            }
+        }
     </style>
 </head>
 <body>
     <header>
         <div class="logo-container">
             <img src="images/logo.jpg" alt="Dorothy Cole Logo" class="logo-img" />
-            <div class="main-title">Secure Payment</div>
+            <div class="main-title">Official Payment Receipt</div>
         </div>
     </header>
     
-    <h1 id="mainHeading">Payment Initiated! ✅</h1>
+    <h1 id="mainHeading">Payment Confirmed! ✅</h1>
 
     <div class="details-box">
         
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2>Payment Confirmation Details</h2>
+            <p style="font-size: 1em; color: #777;">Thank you for your payment.</p>
+        </div>
+
+        <div class="data-field" style="border-top: 2px solid #0A4879;">
+            <div class="data-label" style="font-size: 1.4em;">TOTAL PAID:</div>
+            <div id="displayAmount" class="data-value">$0.00</div>
+        </div>
+
         <div class="data-field">
-            <label class="data-label">Invoice Number:</label>
+            <div class="data-label">Invoice Number:</div>
             <div id="displayInvoiceId" class="data-value">N/A</div>
         </div>
 
         <div class="data-field">
-            <label class="data-label">Payment Amount:</label>
-            <div id="displayAmount" class="data-value">$0.00</div>
+            <div class="data-label">Date & Time Initiated:</div>
+            <div id="displayTimestamp" class="data-value">N/A</div>
+        </div>
+
+        <div class="data-field">
+            <div class="data-label">Paid By Name:</div>
+            <div id="displayName" class="data-value">N/A</div>
         </div>
         
         <div class="data-field">
-            <label class="data-label">Stripe Transaction Reference (Session ID):</label>
-            <div id="displaySessionId" class="data-value">N/A</div>
+            <div class="data-label">Email Used:</div>
+            <div id="displayEmail" class="data-value">N/A</div>
+        </div>
+
+        <div class="data-field">
+            <div class="data-label">Payment Method:</div>
+            <div id="displayPaymentMethod" class="data-value">N/A</div>
+        </div>
+
+        <div class="data-field">
+            <div class="data-label">
+                Stripe Reference (Session ID):
+                <span class="tooltip-container">
+                    <span class="info-icon">ⓘ</span> 
+                    <span class="tooltip-text">
+                        This is a unique, system-generated reference number for the payment attempt, assigned by the payment processor (Stripe). It is used to look up transaction details.
+                    </span>
+                </span>
+            </div>
+            <div id="displaySessionId" class="data-value" style="font-size: 1em;">N/A</div>
         </div>
     </div>
+
+    <button onclick="window.print()" class="print-button">Print Receipt for Records</button>
 
     <div class="disclaimer-note">
         <span class="header-block">Client Cost:</span> As a reminder, this payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
@@ -160,29 +265,92 @@
     </div>
     
     <script>
-        // --- Script to populate Amount/ID from URL ---
         const urlParams = new URLSearchParams(window.location.search);
         
-        // Extract parameters, defaulting to null/empty string if not present
+        const WORKER_BASE_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev'; 
+        
+        // --- Data from URL ---
         const sessionId = urlParams.get('session_id');
         const amountInCents = urlParams.get('amount');
         const invoiceId = urlParams.get('invoice_id');
         
+        // --- HTML Elements ---
         const displayAmount = document.getElementById('displayAmount');
         const displayInvoiceId = document.getElementById('displayInvoiceId');
         const displaySessionId = document.getElementById('displaySessionId');
+        const displayName = document.getElementById('displayName');
+        const displayEmail = document.getElementById('displayEmail');
+        const displayPaymentMethod = document.getElementById('displayPaymentMethod');
+        const displayTimestamp = document.getElementById('displayTimestamp');
 
         function formatAmount(cents) {
             if (!cents || isNaN(cents) || parseInt(cents, 10) <= 0) return '$0.00';
-            
             const dollars = (parseInt(cents, 10) / 100).toFixed(2);
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(dollars);
         }
 
-        // Populate the fields immediately
-        displayAmount.textContent = formatAmount(amountInCents);
-        displayInvoiceId.textContent = invoiceId || 'N/A';
-        displaySessionId.textContent = sessionId || 'N/A';
+        function formatTimestamp(unixTimestamp) {
+            if (!unixTimestamp) return 'N/A';
+            const date = new Date(unixTimestamp * 1000);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZoneName: 'short'
+            });
+        }
+
+        async function fetchAndDisplayReceiptDetails() {
+            // Populate URL-based fields immediately
+            displayAmount.textContent = formatAmount(amountInCents);
+            displayInvoiceId.textContent = invoiceId || 'N/A';
+            displaySessionId.textContent = sessionId || 'N/A';
+
+            if (!sessionId) {
+                // If there's no session ID, we cannot fetch full receipt details
+                return; 
+            }
+
+            try {
+                const response = await fetch(`${WORKER_BASE_URL}/get-receipt-details`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId }),
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('Error fetching receipt data:', data.error);
+                    // Show a partial error message but keep basic info available
+                    displayName.textContent = 'Error fetching details.';
+                    return;
+                }
+
+                // Populate receipt fields from API
+                displayName.textContent = data.name;
+                displayEmail.textContent = data.email;
+                displayTimestamp.textContent = formatTimestamp(data.timestamp);
+
+                // Format Payment Method display
+                let paymentMethodText = 'N/A';
+                if (data.last4 !== 'N/A') {
+                    // Combine brand (Card/Bank Name) and last 4
+                    paymentMethodText = `${data.brand || data.method} ending in ${data.last4}`;
+                } else if (data.method !== 'N/A') {
+                    // Fallback for methods without last4 (e.g., some Link payments)
+                    paymentMethodText = data.method;
+                }
+                displayPaymentMethod.textContent = paymentMethodText;
+
+            } catch (e) {
+                console.error('Network or Parse Error:', e);
+                displayName.textContent = 'Network Error.';
+            }
+        }
+
+        fetchAndDisplayReceiptDetails();
     </script>
 </body>
 </html>
