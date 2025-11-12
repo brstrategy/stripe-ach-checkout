@@ -8,9 +8,20 @@ const corsHeaders = {
 };
 // ----------------------------
 
+// Message to display on Stripe Checkout beneath the payment amount
+const PAYMENT_DESCRIPTION = `
+To minimize processing costs for Dorothy Cole, please select the 'US Bank Account' (ACH) option instead of using a credit card.
+`.trim();
+
+
 export default {
+    /**
+     * Main Cloudflare Worker fetch handler.
+     * Routes requests to the correct handler function.
+     */
     async fetch(request, env) {
         
+        // Handle CORS preflight requests
         if (request.method === 'OPTIONS') {
             return new Response(null, {
                 status: 204,
@@ -24,10 +35,10 @@ export default {
         try {
             // --- Router to handle both API endpoints ---
             if (pathname === '/create-checkout-session' && request.method === 'POST') {
-                return handleCreateCheckoutSession(request, env); 
+                return handleCreateCheckoutSession(request, env);    
             }
             if (pathname === '/check-duplicate-invoice' && request.method === 'POST') {
-                return handleCheckDuplicateInvoice(request, env); 
+                return handleCheckDuplicateInvoice(request, env);    
             }
             
             return new Response('Not Found', {
@@ -47,12 +58,12 @@ export default {
 };
 
 // =================================================================
-// === HANDLER: DUPLICATE CHECK (CORRECTED LOGIC) ==================
+// === HANDLER: DUPLICATE CHECK ====================================
 // =================================================================
 
 /**
  * Checks Stripe for existing Payment Intents associated with the invoice ID.
- * Uses simple metadata search and filters by status in JavaScript to avoid Stripe query syntax errors.
+ * Filters results by status ('succeeded' or 'processing') in JavaScript.
  */
 async function handleCheckDuplicateInvoice(request, env) {
     const { invoiceId } = await request.json();
@@ -61,8 +72,8 @@ async function handleCheckDuplicateInvoice(request, env) {
         return new Response(JSON.stringify({ error: 'Invoice ID is required for check.' }), { status: 400, headers: corsHeaders });
     }
 
-    // SIMPLIFIED QUERY: Only search for the Invoice ID in metadata. 
-    // This avoids the confusing AND/OR mix that caused the previous error.
+    // Simplified query: Search for the Invoice ID in metadata
+    // NOTE: stripe.com/v1/payment_intents/search uses URL encoding rules for the query string.
     const query = `metadata["invoice_number"]:"${encodeURIComponent(invoiceId)}"`;
 
     const searchRes = await fetch(`https://api.stripe.com/v1/payment_intents/search?query=${query}`, {
@@ -71,7 +82,7 @@ async function handleCheckDuplicateInvoice(request, env) {
     const searchData = await searchRes.json();
 
     if (searchRes.ok && searchData.data) {
-        // Filter the results in JavaScript for the required statuses: succeeded or processing.
+        // Filter the results in JavaScript for the required statuses
         const duplicatePayments = searchData.data.filter(pi => 
             pi.status === 'succeeded' || pi.status === 'processing'
         );
@@ -84,7 +95,7 @@ async function handleCheckDuplicateInvoice(request, env) {
         );
     } else {
         console.error('Stripe search error:', searchData);
-        // Returns generic failure message as requested by client-side error handling
+        // Returns generic failure message
         return new Response(
             JSON.stringify({ error: 'Failed to perform duplicate check.' }),
             { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -108,6 +119,7 @@ async function handleCreateCheckoutSession(request, env) {
 
     // 1. SEARCH/CREATE STRIPE CUSTOMER
     let customerId;
+    // Search for an existing customer by email
     const searchRes = await fetch(`https://api.stripe.com/v1/customers/search?query=email:'${encodeURIComponent(email)}'`, {
         headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` },
     });
@@ -128,32 +140,45 @@ async function handleCreateCheckoutSession(request, env) {
         customerId = createData.id;
     }
 
-    let mode = 'payment'; 
+    let mode = 'payment';
     
     // 2. BUILD SESSION PARAMS
     const params = {
-        'payment_method_types[0]': 'us_bank_account', // Enforce ACH only
+        // Stripe payment methods are configured to prioritize us_bank_account, link, then card
+        'payment_method_types[0]': 'us_bank_account',
+        'payment_method_types[1]': 'link',
+        'payment_method_types[2]': 'card',
         mode: mode,
         customer: customerId,
         client_reference_id: customerId,
         
         // Ensures name is collected if missing
-        'customer_update[name]': 'auto', 
+        'customer_update[name]': 'auto',
         
         // Attach the Invoice ID as metadata on the Payment Intent
-        'payment_intent_data[metadata][invoice_number]': invoiceId, 
+        'payment_intent_data[metadata][invoice_number]': invoiceId,
         
-        // ACH payments require success/cancel URLs for redirects
+        // Success URL passes the amount (in cents) and session ID
         success_url: `${CLIENT_DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}&mode=${mode}&amount=${amount}`, 
-        cancel_url: `${CLIENT_DOMAIN}/cancel.html`,
+        
+        // Cancel URL now passes the original form data back to be pre-filled
+        cancel_url: `${CLIENT_DOMAIN}/cancel.html?email=${encodeURIComponent(email)}&amount=${(amount / 100).toFixed(2)}&invoice_id=${encodeURIComponent(invoiceId)}`,
     };
 
-    // Add line item
+    // Add line item details (Price Data)
     params['line_items[0][quantity]'] = '1';
     params['line_items[0][price_data][currency]'] = 'usd';
-    params['line_items[0][price_data][product_data][name]'] = 'Client Payment';
+    
+    // Use the invoice ID in the name for clarity
+    params['line_items[0][price_data][product_data][name]'] = `Payment for Invoice #${invoiceId}`;
+    
+    // Add the descriptive message
+    params['line_items[0][price_data][product_data][description]'] = PAYMENT_DESCRIPTION;
+
+    // Use the amount in cents
     params['line_items[0][price_data][unit_amount]'] = amount.toString();
     
+    // 3. CREATE SESSION
     const sessionRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -169,8 +194,9 @@ async function handleCreateCheckoutSession(request, env) {
         );
     } else {
         console.error('Stripe API error:', sessionData);
+        // Provide a meaningful error message from Stripe if available
         return new Response(
-            JSON.stringify({ error: sessionData.error ? (sessionData.error.message || 'Stripe error') : 'Internal server error' }),
+            JSON.stringify({ error: sessionData.error ? (sessionData.error.message || 'Stripe API request failed.') : 'Internal server error' }),
             { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
     }

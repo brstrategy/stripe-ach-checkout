@@ -54,7 +54,7 @@
         }
         
         /* UPDATED: Button style to match success.html aesthetic */
-        a {
+        .return-button { /* Changed 'a' to a class for better targeting */
             display: inline-block;
             margin-top: 30px;
             padding: 14px 24px;
@@ -64,8 +64,9 @@
             border-radius: 5px;
             font-size: 1.2em;
             font-weight: 600;
+            transition: background 0.3s;
         }
-        a:hover {
+        .return-button:hover {
             background: #0A4879;
         }
     </style>
@@ -81,6 +82,31 @@
     <h1>Transaction Not Completed 🛑</h1>
     <p>You cancelled the payment process or an issue prevented its completion. Please try again or contact support if the issue persists.</p>
     
-    <a href="index.html">Return to Payment Page</a>
+    <!-- IMPORTANT: Link now uses a class and an ID for dynamic updating -->
+    <a id="return-link" class="return-button" href="index.html">Return to Payment Page</a>
+
+    <script>
+        // --- Logic to read URL params and restore link to index.html with data ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        const amount = urlParams.get('amount');
+        const invoiceId = urlParams.get('invoice_id');
+        const returnLink = document.getElementById('return-link');
+
+        let queryString = '';
+        
+        // Build the query string using the captured parameters
+        if (email || amount || invoiceId) {
+            const parts = [];
+            if (email) parts.push(`email=${encodeURIComponent(email)}`);
+            // Note: amount is already a dollar string from the worker
+            if (amount) parts.push(`amount=${encodeURIComponent(amount)}`); 
+            if (invoiceId) parts.push(`invoice_id=${encodeURIComponent(invoiceId)}`);
+            queryString = '?' + parts.join('&');
+        }
+
+        // Set the link target, which will trigger the pre-fill logic in index.html
+        returnLink.href = 'index.html' + queryString;
+    </script>
 </body>
 </html>
