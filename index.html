@@ -59,6 +59,7 @@
         .input-card h2 {
             margin-top: 0;
             margin-bottom: 30px; /* Add some space below the title */
+            color: #0A4879; /* CHANGED: Set color for heading to match brand blue */
         }
         .form-group {
             margin-bottom: 20px;
@@ -68,6 +69,7 @@
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 1.1em;
+            color: #0A4879; /* CHANGED: Set color for labels to match brand blue */
         }
         input[type="email"], input[type="number"], input[type="text"] {
             width: 100%;
@@ -172,15 +174,15 @@
             </div>
 
             <!-- 2. FULL DISCLAIMER SECTION (Placed after inputs) --><div class="disclaimer-note">
-                <span class="header-block">Payment Method:</span> We kindly ask that you select the 'US Bank Account' (ACH) option if possible. Using a credit card will result in our business incurring a third-party processing fee of approximately 3%.
+                <span class="header-block">Payment Method:</span> On the next page, we kindly ask that you select the 'US Bank Account' (ACH) option if possible. Using a credit card will result in our business incurring a third-party processing fee of approximately 3%.
 
                 <span class="header-block">Client Cost:</span> This payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
 
-                <span class="header-block">Disclosure:</span> Dorothy Cole does not endorse or discourage the use of any specific banks or financial institutions that appear during the checkout process.
+                <span class="header-block">Disclosure:</span> Dorothy Cole neither endorses nor discourages the use of any specific banks or financial institutions that may appear during the checkout process.
             </div>
 
             <!-- 3. BUTTON AREA (Placed after disclaimer) --><div class="button-area">
-                <button type="submit" id="submit-button" class="submit-button">Pay Now</button>
+                <button type="submit" id="submit-button" class="submit-button">Go to Checkout</button>
                 <div id="error-message"></div>
             </div>
 
@@ -220,7 +222,8 @@
             errorMessageDiv.textContent = message;
             errorMessageDiv.style.display = 'block';
             submitButton.disabled = false;
-            submitButton.textContent = 'Pay Now';
+            // UPDATE: Ensure the button text resets to "Go to Checkout"
+            submitButton.textContent = 'Go to Checkout'; 
         }
 
         function amountToCents(amountString) {
@@ -263,7 +266,8 @@
 
                 // STEP 2: Handle Duplicate Warning
                 if (checkData.isDuplicate) {
-                    submitButton.textContent = 'Pay Now (Duplicate Invoice)';
+                    // UPDATE: Change text to reflect the new primary CTA
+                    submitButton.textContent = 'Go to Checkout (Duplicate Invoice)'; 
                     
                     // NOTE: Do not use alert() or confirm() in production environment. 
                     // Use a custom modal instead. Using confirm() here for simplicity.
