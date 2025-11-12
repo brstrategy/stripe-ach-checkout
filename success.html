@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Payment Initiated</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png"> 
     <style>
+        /* Base styles */
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background: #FFFFFF;
@@ -22,28 +24,28 @@
             text-align: center; 
             margin-bottom: 30px; 
         }
+        
+        /* Logo Styles */
         .logo-container {
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-        /* Using a placeholder image URL for the logo, as local files are not supported */
         .logo-img {
             max-width: 300px;
             width: 100%;
             height: auto;
             display: block;
             margin-bottom: 15px;
-            /* Placeholder for Dorothy Cole Logo */
-            content: url(https://placehold.co/300x70/0A4879/ffffff?text=Dorothy+Cole+Logo); 
+            /* 🔥 FIX APPLIED: Removed the conflicting 'content' property here */
         }
-        
-        /* Match the style of index.html's title */
         .main-title { 
             font-size: 1.5em; 
             margin-top: 5px; 
             color: #0A4879; 
         }
+        
+        /* Main Content Styles */
         h1 {
             color: #4CAF50; /* Green for success */
             margin-top: 0;
@@ -55,7 +57,7 @@
             margin: 10px auto;
         }
         
-        /* --- BOX 1: MAIN DETAILS CONTAINER (input-card style) --- */
+        /* --- BOX 1: MAIN DETAILS CONTAINER --- */
         .details-box {
             background: #fff;
             padding: 40px;
@@ -64,17 +66,16 @@
             max-width: 400px; 
             width: 100%;
             margin: 20px auto 20px; 
-            box-sizing: border-box; /* IMPORTANT: Ensures padding is inside the 400px width */
+            box-sizing: border-box; /* Ensures padding is inside the 400px width */
             text-align: left;
         }
         
-        /* --- DATA DISPLAY STYLES (inside details-box) --- */
+        /* --- DATA DISPLAY STYLES --- */
         .data-field {
             margin-bottom: 30px; 
             border-bottom: 1px solid #eee;
             padding-bottom: 15px;
         }
-        /* Last data field should not have a border */
         .details-box .data-field:last-child {
             margin-bottom: 0;
             border-bottom: none;
@@ -96,7 +97,7 @@
             white-space: normal;
         }
 
-        /* --- BOX 2: DISCLOSURE NOTE (Copied from index.html's styling) --- */
+        /* --- BOX 2: DISCLOSURE NOTE --- */
         .disclaimer-note {
             max-width: 400px; 
             width: 100%;
@@ -110,7 +111,7 @@
             font-size: 0.9em;
             line-height: 1.5;
             color: #4a5568;
-            box-sizing: border-box; /* FIX: Added this to match the total width of the box above */
+            /* Removed redundant box-sizing: border-box here */
         }
 
         .disclaimer-note .header-block {
@@ -120,8 +121,6 @@
             margin-bottom: 2px;
             font-weight: 700;
         }
-        /* End of custom styles for the disclosure box */
-
     </style>
 </head>
 <body>
@@ -134,33 +133,27 @@
     
     <h1 id="mainHeading">Payment Initiated! ✅</h1>
 
-    <!-- BOX 1: PAYMENT DETAILS (input-card style) -->
     <div class="details-box">
         
-        <!-- Invoice Number (MOVED TO TOP) -->
         <div class="data-field">
             <label class="data-label">Invoice Number:</label>
             <div id="displayInvoiceId" class="data-value">N/A</div>
         </div>
 
-        <!-- Payment Amount (MOVED DOWN) -->
         <div class="data-field">
             <label class="data-label">Payment Amount:</label>
             <div id="displayAmount" class="data-value">$0.00</div>
         </div>
         
-        <!-- Stripe Session ID -->
         <div class="data-field">
             <label class="data-label">Stripe Transaction Reference (Session ID):</label>
             <div id="displaySessionId" class="data-value">N/A</div>
         </div>
     </div>
 
-    <!-- BOX 2: DISCLOSURES/EXPLANATIONS (disclaimer-note style) -->
     <div class="disclaimer-note">
-        <!-- NEW BLOCK ADDED HERE -->
         <span class="header-block">Client Cost:</span> As a reminder, this payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
-        <!-- Using the block structure from index.html -->
+        
         <span class="header-block">Payment Clearance:</span> Since this is an ACH transaction, the funds will typically be marked as <strong>cleared</strong> in <strong>3 to 5 business days</strong>. Your account will be debited during this time.
         
         <span class="header-block">Account Verification:</span> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an <strong>email from Stripe</strong> with instructions on how to complete the microdeposit verification process.
