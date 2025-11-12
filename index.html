@@ -17,7 +17,6 @@
             margin: 0;
             padding: 40px 20px;
         }
-        /* NEW WRAPPER for consistent horizontal centering and max-width */
         .page-wrapper {
             max-width: 400px;
             width: 100%;
@@ -45,15 +44,21 @@
             margin-top: 5px;
             color: #0A4879;
         }
-        .container {
+        /* New name for the input box */
+        .input-card {
             background: #fff;
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             width: 100%;
-            margin: 20px 0 0; /* Adjusted margin since .page-wrapper handles auto centering */
+            margin: 20px 0 0;
             box-sizing: border-box;
             text-align: left;
+        }
+        /* 🔥 FIX: Remove top margin from the H2 within the input-card */
+        .input-card h2 {
+            margin-top: 0;
+            margin-bottom: 30px; /* Add some space below the title */
         }
         .form-group {
             margin-bottom: 20px;
@@ -106,19 +111,50 @@
             display: none;
             text-align: center;
         }
+
+        /* DISCLAIMER NOTE STYLES */
+        .disclaimer-note {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f7f9fc; /* Light blue/gray background */
+            border: 1px solid #e0e6ed;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 0.9em;
+            line-height: 1.5;
+            color: #4a5568;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Lighter shadow to make it look like a separate panel */
+        }
+        
+        /* NEW RULE: This targets the header span specifically, forcing it to block/new line */
+        .disclaimer-note .header-block {
+            color: #0A4879;
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 2px;
+            font-weight: 700; /* Explicitly bold the span */
+        }
+
+        /* Styling for the button area */
+        .button-area {
+            margin-top: 20px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
-    <div class="page-wrapper"> <header>
+    <div class="page-wrapper">
+        <header>
             <div class="logo-container">
                 <img src="images/logo.jpg" alt="Dorothy Cole Logo" class="logo-img" />
                 <div class="main-title">Secure Payment</div>
             </div>
         </header>
         
-        <div class="container">
-            <h2>Enter Payment Details</h2>
-            <form id="payment-form">
+        <!-- The form now wraps the input card, disclaimer, and button area --><form id="payment-form">
+
+            <!-- 1. INPUT CARD (Original container, now renamed and streamlined) --><div class="input-card">
+                <h2>Enter Payment Details</h2>
                 <div class="form-group">
                     <label for="email">Client Email:</label>
                     <input type="email" id="email" name="email" required placeholder="name@example.com" />
@@ -133,15 +169,27 @@
                     <label for="invoice_id">Invoice #:</label>
                     <input type="text" id="invoice_id" name="invoice_id" required placeholder="e.g., 25-1001" />
                 </div>
-                
+            </div>
+
+            <!-- 2. FULL DISCLAIMER SECTION (Placed after inputs) --><div class="disclaimer-note">
+                <span class="header-block">Payment Method:</span> We kindly ask that you select the 'US Bank Account' (ACH) option if possible. Using a credit card will result in our business incurring a third-party processing fee of approximately 3%.
+
+                <span class="header-block">Client Cost:</span> This payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
+
+                <span class="header-block">Disclosure:</span> Dorothy Cole does not endorse or discourage the use of any specific banks or financial institutions that appear during the checkout process.
+            </div>
+
+            <!-- 3. BUTTON AREA (Placed after disclaimer) --><div class="button-area">
                 <button type="submit" id="submit-button" class="submit-button">Pay Now</button>
                 <div id="error-message"></div>
-            </form>
-        </div>
-    </div> <script>
+            </div>
+
+        </form>
+    </div>
+
+    <script>
         // --- Configuration ---
         const STRIPE_PUBLIC_KEY = 'pk_live_51RqI73AudhHgic2dfiEoTvHryUC1O6Db4w2Z08A9GaejWi2VuqyAVlp0GLV5ZbJHHekU1dC49n3TpnViKOwbieK200O40lRHVv';
-        // IMPORTANT: REPLACE THIS WITH YOUR ACTUAL WORKER URL BASE (e.g., https://my-worker.my-username.workers.dev)
         const WORKER_BASE_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
         const stripe = Stripe(STRIPE_PUBLIC_KEY);
         
@@ -196,7 +244,6 @@
             const invoiceId = invoiceIdInput.value.trim();
             
             if (!email || !amountInCents || amountInCents < 50 || !invoiceId) {
-                // Client-side validation check
                 return showErrorMessage('Please ensure all fields (Email, Amount, and Invoice #) are valid and complete.');
             }
 
@@ -218,7 +265,8 @@
                 if (checkData.isDuplicate) {
                     submitButton.textContent = 'Pay Now (Duplicate Invoice)';
                     
-                    // Show the confirmation popup
+                    // NOTE: Do not use alert() or confirm() in production environment. 
+                    // Use a custom modal instead. Using confirm() here for simplicity.
                     const proceed = confirm(`Warning: Invoice #${invoiceId} already has a payment that is processing or was successful. Are you sure you want to proceed with a second payment?`);
                     
                     if (!proceed) {
