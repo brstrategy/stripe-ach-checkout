@@ -10,7 +10,7 @@ const corsHeaders = {
 
 // Message to display on Stripe Checkout beneath the payment amount
 const PAYMENT_DESCRIPTION = `
-To minimize processing costs for Dorothy Cole, please select the 'US Bank Account' (ACH) option instead of using a credit card.
+To minimize processing costs for Dorothy Cole, please select the 'US bank account' option instead of using a credit card.
 `.trim();
 
 
@@ -158,8 +158,8 @@ async function handleCreateCheckoutSession(request, env) {
         // Attach the Invoice ID as metadata on the Payment Intent
         'payment_intent_data[metadata][invoice_number]': invoiceId,
         
-        // Success URL passes the amount (in cents) and session ID
-        success_url: `${CLIENT_DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}&mode=${mode}&amount=${amount}`, 
+        // Success URL passes the amount, session ID, AND THE INVOICE ID
+        success_url: `${CLIENT_DOMAIN}/success.html?session_id={CHECKOUT_SESSION_ID}&mode=${mode}&amount=${amount}&invoice_id=${encodeURIComponent(invoiceId)}`, 
         
         // Cancel URL now passes the original form data back to be pre-filled
         cancel_url: `${CLIENT_DOMAIN}/cancel.html?email=${encodeURIComponent(email)}&amount=${(amount / 100).toFixed(2)}&invoice_id=${encodeURIComponent(invoiceId)}`,
@@ -170,7 +170,7 @@ async function handleCreateCheckoutSession(request, env) {
     params['line_items[0][price_data][currency]'] = 'usd';
     
     // Use the invoice ID in the name for clarity
-    params['line_items[0][price_data][product_data][name]'] = `Payment for Invoice #${invoiceId}`;
+    params['line_items[0][price_data][product_data][name]'] = `Invoice #${invoiceId}`;
     
     // Add the descriptive message
     params['line_items[0][price_data][product_data][description]'] = PAYMENT_DESCRIPTION;

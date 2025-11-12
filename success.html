@@ -27,12 +27,15 @@
             flex-direction: column;
             align-items: center;
         }
+        /* Using a placeholder image URL for the logo, as local files are not supported */
         .logo-img {
             max-width: 300px;
             width: 100%;
             height: auto;
             display: block;
             margin-bottom: 15px;
+            /* Placeholder for Dorothy Cole Logo */
+            content: url(https://placehold.co/300x70/0A4879/ffffff?text=Dorothy+Cole+Logo); 
         }
         
         /* Match the style of index.html's title */
@@ -52,25 +55,32 @@
             margin: 10px auto;
         }
         
-        /* --- MAIN CONTAINER (Box) --- */
-        .container {
+        /* --- BOX 1: MAIN DETAILS CONTAINER (input-card style) --- */
+        .details-box {
             background: #fff;
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 450px; 
+            max-width: 400px; 
             width: 100%;
-            margin: 20px auto 40px; /* Increased bottom margin */
-            box-sizing: border-box;
+            margin: 20px auto 20px; 
+            box-sizing: border-box; /* IMPORTANT: Ensures padding is inside the 400px width */
             text-align: left;
         }
         
-        /* --- DATA DISPLAY STYLES (NO BOXES, JUST TEXT) --- */
+        /* --- DATA DISPLAY STYLES (inside details-box) --- */
         .data-field {
             margin-bottom: 30px; 
             border-bottom: 1px solid #eee;
             padding-bottom: 15px;
         }
+        /* Last data field should not have a border */
+        .details-box .data-field:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
         .data-label {
             display: block;
             font-weight: 600;
@@ -86,35 +96,32 @@
             white-space: normal;
         }
 
-        /* --- EXPLANATION LIST STYLES --- */
-        .explanation-list {
-            margin-top: 25px;
-            padding: 0;
-            list-style-type: none; 
-            border-top: 1px solid #eee;
-            padding-top: 25px;
-        }
-        .explanation-list li {
-            margin-bottom: 15px;
-            line-height: 1.4;
-            padding-left: 25px;
-            position: relative;
-        }
-        .explanation-list li::before {
-            content: '🔹'; 
-            position: absolute;
-            left: 0;
-            top: 0;
-            font-size: 1.2em;
-            color: #016FD0;
-        }
-        /* Ensure all text meant to be bold inside the list is styled correctly */
-        .explanation-list strong {
-            font-weight: 700;
-            color: #333; /* Make sure it stands out */
+        /* --- BOX 2: DISCLOSURE NOTE (Copied from index.html's styling) --- */
+        .disclaimer-note {
+            max-width: 400px; 
+            width: 100%;
+            margin: 0 auto 40px;
+            padding: 20px;
+            background-color: #f7f9fc; 
+            border: 1px solid #e0e6ed; 
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+            text-align: left;
+            font-size: 0.9em;
+            line-height: 1.5;
+            color: #4a5568;
+            box-sizing: border-box; /* FIX: Added this to match the total width of the box above */
         }
 
-        /* --- REMOVED A-TAG STYLES --- */
+        .disclaimer-note .header-block {
+            color: #0A4879;
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 2px;
+            font-weight: 700;
+        }
+        /* End of custom styles for the disclosure box */
+
     </style>
 </head>
 <body>
@@ -127,44 +134,62 @@
     
     <h1 id="mainHeading">Payment Initiated! ✅</h1>
 
-    <div class="container">
+    <!-- BOX 1: PAYMENT DETAILS (input-card style) -->
+    <div class="details-box">
         
+        <!-- Invoice Number (MOVED TO TOP) -->
+        <div class="data-field">
+            <label class="data-label">Invoice Number:</label>
+            <div id="displayInvoiceId" class="data-value">N/A</div>
+        </div>
+
+        <!-- Payment Amount (MOVED DOWN) -->
         <div class="data-field">
             <label class="data-label">Payment Amount:</label>
             <div id="displayAmount" class="data-value">$0.00</div>
         </div>
         
+        <!-- Stripe Session ID -->
         <div class="data-field">
             <label class="data-label">Stripe Transaction Reference (Session ID):</label>
             <div id="displaySessionId" class="data-value">N/A</div>
         </div>
-
-        <ul class="explanation-list">
-            <li>
-                <strong>ACH Payment Clearance:</strong> Since this is an ACH transaction, the funds will typically be marked as <strong>cleared</strong> in <strong>3 to 5 business days</strong>. Your account will be debited during this time.
-            </li>
-            <li>
-                <strong>Account Verification (Microdeposits):</strong> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an <strong>email from Stripe</strong> with instructions on how to complete the microdeposit verification process.
-            </li>
-        </ul>
     </div>
+
+    <!-- BOX 2: DISCLOSURES/EXPLANATIONS (disclaimer-note style) -->
+    <div class="disclaimer-note">
+        <!-- NEW BLOCK ADDED HERE -->
+        <span class="header-block">Client Cost:</span> As a reminder, this payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
+        <!-- Using the block structure from index.html -->
+        <span class="header-block">Payment Clearance:</span> Since this is an ACH transaction, the funds will typically be marked as <strong>cleared</strong> in <strong>3 to 5 business days</strong>. Your account will be debited during this time.
+        
+        <span class="header-block">Account Verification:</span> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an <strong>email from Stripe</strong> with instructions on how to complete the microdeposit verification process.
+    </div>
+    
     <script>
-        // --- Minimal Script to populate Amount/ID from URL ---
+        // --- Script to populate Amount/ID from URL ---
         const urlParams = new URLSearchParams(window.location.search);
+        
+        // Extract parameters, defaulting to null/empty string if not present
         const sessionId = urlParams.get('session_id');
         const amountInCents = urlParams.get('amount');
+        const invoiceId = urlParams.get('invoice_id');
         
         const displayAmount = document.getElementById('displayAmount');
+        const displayInvoiceId = document.getElementById('displayInvoiceId');
         const displaySessionId = document.getElementById('displaySessionId');
 
         function formatAmount(cents) {
-            if (!cents || isNaN(cents)) return '$0.00';
-            const dollars = (parseInt(cents) / 100).toFixed(2);
+            // Checks for null, undefined, or non-numeric/zero cents
+            if (!cents || isNaN(cents) || parseInt(cents, 10) <= 0) return '$0.00';
+            
+            const dollars = (parseInt(cents, 10) / 100).toFixed(2);
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(dollars);
         }
 
         // Populate the fields immediately
         displayAmount.textContent = formatAmount(amountInCents);
+        displayInvoiceId.textContent = invoiceId || 'N/A';
         displaySessionId.textContent = sessionId || 'N/A';
     </script>
 </body>
