@@ -22,7 +22,7 @@
         header { 
             width: 100%; 
             text-align: center; 
-            margin-bottom: 30px; 
+            margin-bottom: 20px; 
         }
         
         /* Logo Styles */
@@ -30,13 +30,14 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            margin-bottom: 20px;
         }
         .logo-img {
             max-width: 300px;
             width: 100%;
             height: auto;
             display: block;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
         }
         .main-title { 
             font-size: 1.5em; 
@@ -44,6 +45,18 @@
             color: #0A4879; 
         }
         
+        /* --- PRINT LINK STYLES --- */
+        .print-link {
+            font-size: 0.9em;
+            color: #016FD0;
+            text-decoration: none;
+            margin-bottom: 30px; /* Space below the link */
+            display: inline-block;
+        }
+        .print-link:hover {
+            text-decoration: underline;
+        }
+
         /* Main Content Styles */
         h1 {
             color: #4CAF50; /* Green for success */
@@ -57,7 +70,7 @@
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            max-width: 400px; 
+            max-width: 550px; /* INCREASED WIDTH for better email/data fit */
             width: 100%;
             margin: 20px auto 20px; 
             box-sizing: border-box; 
@@ -68,11 +81,11 @@
         .data-field {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            /* ALIGNMENT FIX: Use 'center' or 'flex-start' but ensure Total is good */
+            align-items: center; 
             padding: 10px 0;
             border-bottom: 1px solid #eee;
             font-size: 1.1em;
-            word-break: break-word; /* Allow long text to wrap */
         }
         .details-box .data-field:last-of-type {
             border-bottom: none;
@@ -83,13 +96,17 @@
             font-weight: 600;
             color: #555;
             flex-grow: 1;
-            max-width: 50%;
+            /* Max-width adjusted to give more room to the value, especially email */
+            max-width: 60%; 
+            padding-right: 10px;
+            word-break: normal;
         }
         .data-value {
             font-weight: 700;
             color: #016FD0;
             text-align: right;
-            max-width: 50%;
+            max-width: 40%;
+            word-break: break-word; /* Allow long emails/IDs to wrap if necessary */
         }
 
         /* Highlight the Payment Amount for emphasis */
@@ -97,6 +114,8 @@
             font-size: 1.5em;
             color: #4CAF50; /* Green for the final amount */
             font-weight: 900;
+            /* FIX: Ensure amount value aligns nicely */
+            line-height: 1; 
         }
         
         /* --- TOOLTIP STYLES --- */
@@ -104,7 +123,7 @@
             position: relative;
             display: inline-block;
             cursor: pointer;
-            line-height: 1; /* Keep the icon aligned with text baseline */
+            line-height: 1; 
         }
         .tooltip-container .tooltip-text {
             visibility: hidden;
@@ -123,7 +142,7 @@
             transition: opacity 0.3s;
             font-size: 0.9em;
             line-height: 1.4;
-            pointer-events: none; /* Prevents text from blocking clicks/hover */
+            pointer-events: none;
         }
         .tooltip-container:hover .tooltip-text {
             visibility: visible;
@@ -138,7 +157,7 @@
 
         /* --- BOX 2: DISCLOSURE NOTE --- */
         .disclaimer-note {
-            max-width: 400px; 
+            max-width: 550px; /* Increased width to match details box */
             width: 100%;
             margin: 0 auto 40px;
             padding: 20px;
@@ -159,36 +178,43 @@
             margin-bottom: 2px;
             font-weight: 700;
         }
-
-        /* --- Print Button & Print Styles --- */
-        .print-button {
-            margin-top: 30px;
-            padding: 10px 20px;
-            font-size: 1.1em;
-            cursor: pointer;
-            background-color: #0A4879;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
+        
+        /* --- Print Styles (Customized) --- */
         @media print {
-            header, .disclaimer-note, .print-button {
+            /* Keep Logo and Header, but hide the print button and main note/disclaimer block */
+            .print-link, .disclaimer-note-block {
                 display: none !important;
             }
+            
+            /* Ensure all colors and images print */
             body {
-                padding: 20px !important;
-                justify-content: center;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background-color: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
             }
+            
+            /* Remove shadows, adjust layout for a clean page */
             .details-box {
                 box-shadow: none !important; 
-                border: 1px solid #ccc;
+                border: 1px solid #ccc; /* Add a subtle border for the receipt box */
+                max-width: 100% !important;
+                margin: 20px 50px !important;
             }
-            /* Reset font size for receipt clarity when printing */
-            .data-value {
-                font-size: 1.1em !important;
+            
+            /* Reset font size/alignment for a professional printout */
+            body, .data-label, .data-value, #displayAmount {
+                font-size: 11pt !important;
             }
             #displayAmount {
-                font-size: 1.5em !important;
+                font-size: 1.4em !important;
+            }
+            .main-title {
+                font-size: 1.2em !important;
+            }
+            .logo-img {
+                max-width: 250px !important;
             }
         }
     </style>
@@ -199,19 +225,22 @@
             <img src="images/logo.jpg" alt="Dorothy Cole Logo" class="logo-img" />
             <div class="main-title">Official Payment Receipt</div>
         </div>
+        <a href="javascript:window.print()" class="print-link">
+            Print for Records
+        </a>
     </header>
     
-    <h1 id="mainHeading">Payment Initiated! ✅</h1>
+    <h1 id="mainHeading"></h1>
 
     <div class="details-box">
         
         <div style="text-align: center; margin-bottom: 20px;">
-            <h2>Payment Confirmation Details</h2>
+            <h2 id="confirmationTitle">Payment Confirmation Details</h2>
             <p style="font-size: 1em; color: #777;">Thank you for your payment.</p>
         </div>
 
         <div class="data-field" style="border-top: 2px solid #0A4879;">
-            <div class="data-label" style="font-size: 1.4em;">TOTAL PAID:</div>
+            <div class="data-label" style="font-size: 1.4em; line-height: 1;">TOTAL PAID:</div>
             <div id="displayAmount" class="data-value">$0.00</div>
         </div>
 
@@ -253,20 +282,21 @@
             <div id="displaySessionId" class="data-value" style="font-size: 1em;">N/A</div>
         </div>
     </div>
-
-    <button onclick="window.print()" class="print-button">Print Receipt for Records</button>
-
-    <div class="disclaimer-note">
-        <span class="header-block">Client Cost:</span> As a reminder, this payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
-        
-        <span class="header-block">Payment Clearance:</span> Since this is an ACH transaction, the funds will typically be marked as <strong>cleared</strong> in <strong>3 to 5 business days</strong>. Your account will be debited during this time.
-        
-        <span class="header-block">Account Verification:</span> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an <strong>email from Stripe</strong> with instructions on how to complete the microdeposit verification process.
+    
+    <div class="disclaimer-note-block">
+        <div class="disclaimer-note" id="disclaimerNote">
+            <span class="header-block">Client Cost:</span> As a reminder, this payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
+            
+            <span class="header-block">Payment Clearance:</span> Since this is an ACH transaction, the funds will typically be marked as <strong>cleared</strong> in <strong>3 to 5 business days</strong>. Your account will be debited during this time.
+            
+            <span class="header-block">Account Verification:</span> If you manually entered your bank account information, Stripe is currently verifying the account. You will receive an <strong>email from Stripe</strong> with instructions on how to complete the microdeposit verification process.
+        </div>
     </div>
     
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         
+        // --- CONFIG ---
         const WORKER_BASE_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev'; 
         
         // --- Data from URL ---
@@ -275,6 +305,11 @@
         const invoiceId = urlParams.get('invoice_id');
         
         // --- HTML Elements ---
+        const mainHeading = document.getElementById('mainHeading');
+        const confirmationTitle = document.getElementById('confirmationTitle');
+        const disclaimerNote = document.getElementById('disclaimerNote');
+        const disclaimerNoteBlock = document.querySelector('.disclaimer-note-block');
+
         const displayAmount = document.getElementById('displayAmount');
         const displayInvoiceId = document.getElementById('displayInvoiceId');
         const displaySessionId = document.getElementById('displaySessionId');
@@ -301,15 +336,35 @@
                 timeZoneName: 'short'
             });
         }
+        
+        // --- Wording Logic ---
+        function updateWording(method) {
+            if (method.includes('Bank Account') || method.includes('Pending')) {
+                // ACH Wording (Initiated/Pending)
+                mainHeading.textContent = 'Payment Initiated! ⏳';
+                mainHeading.style.color = '#FF9800'; // Orange/Amber
+                confirmationTitle.textContent = 'Payment Initiation Details';
+                disclaimerNoteBlock.style.display = 'block'; // Show the ACH notes
+            } else {
+                // Card/Cleared Payment Wording
+                mainHeading.textContent = 'Payment Complete! ✅';
+                mainHeading.style.color = '#4CAF50'; // Green
+                confirmationTitle.textContent = 'Payment Confirmation Details';
+                // Remove the ACH-specific notes (or clear the content)
+                disclaimerNoteBlock.style.display = 'none'; 
+            }
+        }
 
         async function fetchAndDisplayReceiptDetails() {
             // Populate URL-based fields immediately
             displayAmount.textContent = formatAmount(amountInCents);
             displayInvoiceId.textContent = invoiceId || 'N/A';
             displaySessionId.textContent = sessionId || 'N/A';
+            
+            // Set default wording before fetching data (assumes ACH pending)
+            updateWording("US Bank Account (Pending)"); 
 
             if (!sessionId) {
-                // If there's no session ID, we cannot fetch full receipt details
                 return; 
             }
 
@@ -323,7 +378,6 @@
 
                 if (data.error) {
                     console.error('Error fetching receipt data:', data.error);
-                    // Show a partial error message but keep basic info available
                     displayName.textContent = 'Error fetching details.';
                     return;
                 }
@@ -339,10 +393,12 @@
                     // Combine brand (Card/Bank Name) and last 4
                     paymentMethodText = `${data.brand || data.method} ending in ${data.last4}`;
                 } else if (data.method !== 'N/A') {
-                    // Fallback for methods without last4 (e.g., some Link payments)
                     paymentMethodText = data.method;
                 }
                 displayPaymentMethod.textContent = paymentMethodText;
+                
+                // FINAL STEP: Update wording based on the fetched method
+                updateWording(paymentMethodText);
 
             } catch (e) {
                 console.error('Network or Parse Error:', e);
