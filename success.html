@@ -37,7 +37,6 @@
             height: auto;
             display: block;
             margin-bottom: 15px;
-            /* 🔥 FIX APPLIED: Removed the conflicting 'content' property here */
         }
         .main-title { 
             font-size: 1.5em; 
@@ -57,7 +56,7 @@
             margin: 10px auto;
         }
         
-        /* --- BOX 1: MAIN DETAILS CONTAINER --- */
+        /* --- BOX 1: MAIN DETAILS CONTAINER (Reference for width) --- */
         .details-box {
             background: #fff;
             padding: 40px;
@@ -66,7 +65,7 @@
             max-width: 400px; 
             width: 100%;
             margin: 20px auto 20px; 
-            box-sizing: border-box; /* Ensures padding is inside the 400px width */
+            box-sizing: border-box; 
             text-align: left;
         }
         
@@ -97,7 +96,7 @@
             white-space: normal;
         }
 
-        /* --- BOX 2: DISCLOSURE NOTE --- */
+        /* --- BOX 2: DISCLOSURE NOTE (The fix is here) --- */
         .disclaimer-note {
             max-width: 400px; 
             width: 100%;
@@ -111,7 +110,8 @@
             font-size: 0.9em;
             line-height: 1.5;
             color: #4a5568;
-            /* Removed redundant box-sizing: border-box here */
+            /* 🔥 FIX: Added box-sizing to ensure padding is contained within the 100% width. */
+            box-sizing: border-box; 
         }
 
         .disclaimer-note .header-block {
@@ -173,7 +173,6 @@
         const displaySessionId = document.getElementById('displaySessionId');
 
         function formatAmount(cents) {
-            // Checks for null, undefined, or non-numeric/zero cents
             if (!cents || isNaN(cents) || parseInt(cents, 10) <= 0) return '$0.00';
             
             const dollars = (parseInt(cents, 10) / 100).toFixed(2);
