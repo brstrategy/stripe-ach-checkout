@@ -44,7 +44,6 @@
             margin-top: 5px;
             color: #0A4879;
         }
-        /* New name for the input box */
         .input-card {
             background: #fff;
             padding: 40px;
@@ -55,11 +54,10 @@
             box-sizing: border-box;
             text-align: left;
         }
-        /* 🔥 FIX: Remove top margin from the H2 within the input-card */
         .input-card h2 {
             margin-top: 0;
-            margin-bottom: 30px; /* Add some space below the title */
-            color: #0A4879; /* CHANGED: Set color for heading to match brand blue */
+            margin-bottom: 30px;
+            color: #0A4879;
         }
         .form-group {
             margin-bottom: 20px;
@@ -69,7 +67,7 @@
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 1.1em;
-            color: #0A4879; /* CHANGED: Set color for labels to match brand blue */
+            color: #0A4879;
         }
         input[type="email"], input[type="number"], input[type="text"] {
             width: 100%;
@@ -113,38 +111,84 @@
             display: none;
             text-align: center;
         }
-
-        /* DISCLAIMER NOTE STYLES */
         .disclaimer-note {
             margin-top: 20px;
             padding: 20px;
-            background-color: #f7f9fc; /* Light blue/gray background */
+            background-color: #f7f9fc;
             border: 1px solid #e0e6ed;
             border-radius: 8px;
             text-align: left;
             font-size: 0.9em;
             line-height: 1.5;
             color: #4a5568;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Lighter shadow to make it look like a separate panel */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        
-        /* NEW RULE: This targets the header span specifically, forcing it to block/new line */
         .disclaimer-note .header-block {
             color: #0A4879;
             display: block;
             margin-top: 10px;
             margin-bottom: 2px;
-            font-weight: 700; /* Explicitly bold the span */
+            font-weight: 700;
         }
-
-        /* Styling for the button area */
         .button-area {
             margin-top: 20px;
             width: 100%;
         }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-content h3 {
+            color: #0A4879;
+            margin-top: 0;
+        }
+        .modal-content p {
+            font-size: 1em;
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        .modal-confirm-btn {
+            background: #016FD0;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1.1em;
+        }
+        .modal-confirm-btn:hover {
+            background: #0A4879;
+        }
     </style>
 </head>
 <body>
+    <div class="modal-overlay" id="fee-modal">
+        <div class="modal-content">
+            <h3>A Quick Note</h3>
+            <p>To help us keep our hourly rates competitive, we kindly ask that you select the <strong>'US Bank Account'</strong> option on the next screen if possible. Credit card payments incur a ~3% processing fee for our business.</p>
+            <button class="modal-confirm-btn" id="modal-ok-btn">Continue to Checkout</button>
+        </div>
+    </div>
     <div class="page-wrapper">
         <header>
             <div class="logo-container">
@@ -152,91 +196,66 @@
                 <div class="main-title">Secure Payment</div>
             </div>
         </header>
-        
-        <!-- The form now wraps the input card, disclaimer, and button area --><form id="payment-form">
-
-            <!-- 1. INPUT CARD (Original container, now renamed and streamlined) --><div class="input-card">
+        <form id="payment-form">
+            <div class="input-card">
                 <h2>Enter Payment Details</h2>
                 <div class="form-group">
                     <label for="email">Client Email:</label>
                     <input type="email" id="email" name="email" required placeholder="name@example.com" />
                 </div>
-                
                 <div class="form-group">
                     <label for="amount">Payment Amount (USD):</label>
                     <input type="number" id="amount" name="amount" required step="0.01" min="0.50" placeholder="e.g., 100.00" />
                 </div>
-
                 <div class="form-group">
                     <label for="invoice_id">Invoice #:</label>
                     <input type="text" id="invoice_id" name="invoice_id" required placeholder="e.g., 25-1001" />
                 </div>
             </div>
-
-            <!-- 2. FULL DISCLAIMER SECTION (Placed after inputs) --><div class="disclaimer-note">
+            <div class="disclaimer-note">
                 <span class="header-block">Payment Method:</span> On the next page, we kindly ask that you select the 'US bank account' option if possible. Using a credit card will result in our business incurring a third-party processing fee of approximately 3%.
-
                 <span class="header-block">Client Cost:</span> This payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
-
                 <span class="header-block">Disclosure:</span> Dorothy Cole neither endorses nor discourages the use of any specific banks or financial institutions that may appear during the checkout process.
             </div>
-
-            <!-- 3. BUTTON AREA (Placed after disclaimer) --><div class="button-area">
+            <div class="button-area">
                 <button type="submit" id="submit-button" class="submit-button">Go to Checkout</button>
                 <div id="error-message"></div>
             </div>
-
         </form>
     </div>
-
     <script>
-        // --- Configuration ---
         const STRIPE_PUBLIC_KEY = 'pk_live_51RqI73AudhHgic2dfiEoTvHryUC1O6Db4w2Z08A9GaejWi2VuqyAVlp0GLV5ZbJHHekU1dC49n3TpnViKOwbieK200O40lRHVv';
         const WORKER_BASE_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
         const stripe = Stripe(STRIPE_PUBLIC_KEY);
-        
-        // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        
-        // --- Element Selectors ---
         const paymentForm = document.getElementById('payment-form');
         const emailInput = document.getElementById('email');
         const amountInput = document.getElementById('amount');
         const invoiceIdInput = document.getElementById('invoice_id');
         const submitButton = document.getElementById('submit-button');
         const errorMessageDiv = document.getElementById('error-message');
+        const modalOverlay = document.getElementById('fee-modal');
+        const modalBtn = document.getElementById('modal-ok-btn');
 
-        // --- Data Prefill Logic ---
-        if (urlParams.has('email')) {
-            emailInput.value = urlParams.get('email');
-        }
-        if (urlParams.has('amount')) {
-            amountInput.value = urlParams.get('amount');
-        }
-        if (urlParams.has('invoice_id')) {
-            invoiceIdInput.value = urlParams.get('invoice_id');
-        }
+        if (urlParams.has('email')) emailInput.value = urlParams.get('email');
+        if (urlParams.has('amount')) amountInput.value = urlParams.get('amount');
+        if (urlParams.has('invoice_id')) invoiceIdInput.value = urlParams.get('invoice_id');
         
-        // --- Helper Functions ---
         function showErrorMessage(message) {
             errorMessageDiv.textContent = message;
             errorMessageDiv.style.display = 'block';
             submitButton.disabled = false;
-            // UPDATE: Ensure the button text resets to "Go to Checkout"
             submitButton.textContent = 'Go to Checkout'; 
         }
 
         function amountToCents(amountString) {
             if (!amountString) return 0;
             const amount = parseFloat(amountString);
-            if (isNaN(amount) || amount <= 0) return 0;
-            return Math.round(amount * 100);
+            return (isNaN(amount) || amount <= 0) ? 0 : Math.round(amount * 100);
         }
-        
-        // --- Main Submission Handler ---
+
         paymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             errorMessageDiv.style.display = 'none';
             submitButton.disabled = true;
             submitButton.textContent = 'Checking Invoice...';
@@ -247,41 +266,39 @@
             const invoiceId = invoiceIdInput.value.trim();
             
             if (!email || !amountInCents || amountInCents < 50 || !invoiceId) {
-                return showErrorMessage('Please ensure all fields (Email, Amount, and Invoice #) are valid and complete.');
+                return showErrorMessage('Please ensure all fields are valid.');
             }
 
             try {
-                // STEP 1: Check for Duplicates
                 const duplicateCheckResponse = await fetch(`${WORKER_BASE_URL}/check-duplicate-invoice`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ invoiceId: invoiceId }),
                 });
-                
                 const checkData = await duplicateCheckResponse.json();
 
-                if (checkData.error) {
-                    return showErrorMessage(`Invoice check failed: ${checkData.error}`);
+                if (checkData.isDuplicate) {
+                    const proceed = confirm(`Warning: Invoice #${invoiceId} already has a payment. Proceed with second payment?`);
+                    if (!proceed) return showErrorMessage('Cancelled.');
                 }
 
-                // STEP 2: Handle Duplicate Warning
-                if (checkData.isDuplicate) {
-                    // UPDATE: Change text to reflect the new primary CTA
-                    submitButton.textContent = 'Go to Checkout (Duplicate Invoice)'; 
-                    
-                    // NOTE: Do not use alert() or confirm() in production environment. 
-                    // Use a custom modal instead. Using confirm() here for simplicity.
-                    const proceed = confirm(`Warning: Invoice #${invoiceId} already has a payment that is processing or was successful. Are you sure you want to proceed with a second payment?`);
-                    
-                    if (!proceed) {
-                        return showErrorMessage('Payment cancelled by user.');
-                    }
-                }
-                
-                // If check passed OR user confirmed, proceed to create the session
-                submitButton.textContent = 'Creating Session...';
-                
-                // STEP 3: Create Checkout Session
+                modalOverlay.style.display = 'flex';
+                submitButton.textContent = 'Awaiting Confirmation...';
+
+            } catch (e) {
+                return showErrorMessage('Network error occurred.');
+            }
+        });
+
+        modalBtn.addEventListener('click', async () => {
+            modalOverlay.style.display = 'none';
+            submitButton.textContent = 'Redirecting...';
+
+            const email = emailInput.value.trim();
+            const amountInCents = amountToCents(amountInput.value.trim());
+            const invoiceId = invoiceIdInput.value.trim();
+
+            try {
                 const sessionResponse = await fetch(`${WORKER_BASE_URL}/create-checkout-session`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -291,25 +308,11 @@
                         invoiceId: invoiceId,
                     }),
                 });
-                
                 const sessionData = await sessionResponse.json();
-
-                if (sessionData.error) {
-                    return showErrorMessage(sessionData.error);
-                }
-
-                // STEP 4: Redirect to Stripe Checkout
-                const result = await stripe.redirectToCheckout({
-                    sessionId: sessionData.id,
-                });
-
-                if (result.error) {
-                    return showErrorMessage(result.error.message);
-                }
-
+                if (sessionData.error) throw new Error(sessionData.error);
+                await stripe.redirectToCheckout({ sessionId: sessionData.id });
             } catch (e) {
-                console.error('Submission Error:', e);
-                return showErrorMessage('A network error occurred. Please try again.');
+                showErrorMessage('Final redirect failed.');
             }
         });
     </script>
