@@ -158,11 +158,8 @@
         .modal-content h3 {
             color: #0A4879;
             margin-top: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
             font-size: 1.4em;
+            margin-bottom: 20px;
         }
         .link-logo-inline {
             height: 16px;
@@ -171,10 +168,10 @@
             margin: 0 2px 3px 2px;
         }
         .modal-content p {
-            font-size: 1em;
+            font-size: 1.05em;
             color: #4a5568;
             line-height: 1.6;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             text-align: left;
         }
         .modal-confirm-btn {
@@ -187,6 +184,7 @@
             cursor: pointer;
             width: 100%;
             font-size: 1.1em;
+            margin-top: 10px;
         }
         .modal-confirm-btn:hover {
             background: #0A4879;
@@ -196,137 +194,9 @@
 <body>
     <div class="modal-overlay" id="fee-modal">
         <div class="modal-content">
-            <h3><span>⚠️</span> Important Note <span>⚠️</span></h3>
-            <p>To help us keep our hourly rates competitive, we kindly ask that you select the <strong>'US Bank Account'</strong> option on the next screen if possible. Credit card payments incur a ~3% processing fee for our business.</p>
-            <p><strong>Note for <img src="https://brandlogos.net/wp-content/uploads/2025/04/link_stripe-logo_brandlogos.net_scfln-512x175.png" alt="Link" class="link-logo-inline"> Users:</strong> If you use Link for 1-click checkout, it may default to a saved card. Please ensure a bank account is selected within your Link settings to help us avoid these fees.</p>
+            <h3>Would you do us a favor? :)</h3>
+            <p>To keep our costs down, we would appreciate it if you select the <strong>'US Bank Account'</strong> option on the next page, if possible, to help us avoid credit card processing fees.</p>
+            <p><strong>Note for <img src="https://brandlogos.net/wp-content/uploads/2025/04/link_stripe-logo_brandlogos.net_scfln-512x175.png" alt="Link" class="link-logo-inline"> Users:</strong> If you use Link for 1-click checkout, it may default to a saved payment method that you may not want to use today. Please ensure the desired payment method is selected within your Link settings.</p>
             <button class="modal-confirm-btn" id="modal-ok-btn">Continue to Checkout</button>
         </div>
     </div>
-    <div class="page-wrapper">
-        <header>
-            <div class="logo-container">
-                <img src="images/logo.jpg" alt="Dorothy Cole Logo" class="logo-img" />
-                <div class="main-title">Secure Payment</div>
-            </div>
-        </header>
-        <form id="payment-form">
-            <div class="input-card">
-                <h2>Enter Payment Details</h2>
-                <div class="form-group">
-                    <label for="email">Client Email:</label>
-                    <input type="email" id="email" name="email" required placeholder="name@example.com" />
-                </div>
-                <div class="form-group">
-                    <label for="amount">Payment Amount (USD):</label>
-                    <input type="number" id="amount" name="amount" required step="0.01" min="0.50" placeholder="e.g., 100.00" />
-                </div>
-                <div class="form-group">
-                    <label for="invoice_id">Invoice #:</label>
-                    <input type="text" id="invoice_id" name="invoice_id" required placeholder="e.g., 25-1001" />
-                </div>
-            </div>
-            <div class="disclaimer-note">
-                <span class="header-block">Client Cost:</span> This payment process is completely <strong>free</strong> for you, the client, and only costs our business a very minimal amount for bank transfers.
-                <span class="header-block">Disclosure:</span> Dorothy Cole neither endorses nor discourages the use of any specific banks or financial institutions that may appear during the checkout process.
-            </div>
-            <div class="button-area">
-                <button type="submit" id="submit-button" class="submit-button">Go to Checkout</button>
-                <div id="error-message"></div>
-            </div>
-        </form>
-    </div>
-    <script>
-        const STRIPE_PUBLIC_KEY = 'pk_live_51RqI73AudhHgic2dfiEoTvHryUC1O6Db4w2Z08A9GaejWi2VuqyAVlp0GLV5ZbJHHekU1dC49n3TpnViKOwbieK200O40lRHVv';
-        const WORKER_BASE_URL = 'https://custom-stripe-checkout-worker.brigham.workers.dev';
-        const stripe = Stripe(STRIPE_PUBLIC_KEY);
-        const urlParams = new URLSearchParams(window.location.search);
-        const paymentForm = document.getElementById('payment-form');
-        const emailInput = document.getElementById('email');
-        const amountInput = document.getElementById('amount');
-        const invoiceIdInput = document.getElementById('invoice_id');
-        const submitButton = document.getElementById('submit-button');
-        const errorMessageDiv = document.getElementById('error-message');
-        const modalOverlay = document.getElementById('fee-modal');
-        const modalBtn = document.getElementById('modal-ok-btn');
-
-        if (urlParams.has('email')) emailInput.value = urlParams.get('email');
-        if (urlParams.has('amount')) amountInput.value = urlParams.get('amount');
-        if (urlParams.has('invoice_id')) invoiceIdInput.value = urlParams.get('invoice_id');
-        
-        function showErrorMessage(message) {
-            errorMessageDiv.textContent = message;
-            errorMessageDiv.style.display = 'block';
-            submitButton.disabled = false;
-            submitButton.textContent = 'Go to Checkout'; 
-        }
-
-        function amountToCents(amountString) {
-            if (!amountString) return 0;
-            const amount = parseFloat(amountString);
-            return (isNaN(amount) || amount <= 0) ? 0 : Math.round(amount * 100);
-        }
-
-        paymentForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            errorMessageDiv.style.display = 'none';
-            submitButton.disabled = true;
-            submitButton.textContent = 'Checking Invoice...';
-
-            const email = emailInput.value.trim();
-            const amountInDollars = amountInput.value.trim();
-            const amountInCents = amountToCents(amountInDollars);
-            const invoiceId = invoiceIdInput.value.trim();
-            
-            if (!email || !amountInCents || amountInCents < 50 || !invoiceId) {
-                return showErrorMessage('Please ensure all fields are valid.');
-            }
-
-            try {
-                const duplicateCheckResponse = await fetch(`${WORKER_BASE_URL}/check-duplicate-invoice`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ invoiceId: invoiceId }),
-                });
-                const checkData = await duplicateCheckResponse.json();
-
-                if (checkData.isDuplicate) {
-                    const proceed = confirm(`Warning: Invoice #${invoiceId} already has a payment. Proceed with second payment?`);
-                    if (!proceed) return showErrorMessage('Cancelled.');
-                }
-
-                modalOverlay.style.display = 'flex';
-                submitButton.textContent = 'Awaiting Confirmation...';
-
-            } catch (e) {
-                return showErrorMessage('Network error occurred.');
-            }
-        });
-
-        modalBtn.addEventListener('click', async () => {
-            modalOverlay.style.display = 'none';
-            submitButton.textContent = 'Redirecting...';
-
-            const email = emailInput.value.trim();
-            const amountInCents = amountToCents(amountInput.value.trim());
-            const invoiceId = invoiceIdInput.value.trim();
-
-            try {
-                const sessionResponse = await fetch(`${WORKER_BASE_URL}/create-checkout-session`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: email,
-                        amount: amountInCents,
-                        invoiceId: invoiceId,
-                    }),
-                });
-                const sessionData = await sessionResponse.json();
-                if (sessionData.error) throw new Error(sessionData.error);
-                await stripe.redirectToCheckout({ sessionId: sessionData.id });
-            } catch (e) {
-                showErrorMessage('Final redirect failed.');
-            }
-        });
-    </script>
-</body>
-</html>
