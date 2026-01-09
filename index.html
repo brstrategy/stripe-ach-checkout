@@ -158,6 +158,15 @@
         .modal-content h3 {
             color: #0A4879;
             margin-top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .important-icon {
+            color: #D32F2F;
+            font-weight: 800;
+            font-size: 1.2em;
         }
         .modal-content p {
             font-size: 1em;
@@ -184,7 +193,7 @@
 <body>
     <div class="modal-overlay" id="fee-modal">
         <div class="modal-content">
-            <h3>A Quick Note</h3>
+            <h3><span class="important-icon">!</span> Important Note</h3>
             <p>To help us keep our hourly rates competitive, we kindly ask that you select the <strong>'US Bank Account'</strong> option on the next screen if possible. Credit card payments incur a ~3% processing fee for our business.</p>
             <button class="modal-confirm-btn" id="modal-ok-btn">Continue to Checkout</button>
         </div>
